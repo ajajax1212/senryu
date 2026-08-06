@@ -1,0 +1,245 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createServer } from 'node:http';
+import express from 'express';
+import { Server, type Socket } from 'socket.io';
+import { reducer } from '../src/engine/reducer';
+import { viewFor } from '../src/engine/view';
+import { DEFAULT_TIME_LIMITS, type Action, type DeckId, type Mode } from '../src/engine/types';
+import {
+  addPlayer,
+  createRoom,
+  getRoom,
+  markDisconnected,
+  reattach,
+  removeFromLobby,
+  sweepIdleRooms,
+  type Room,
+} from './rooms';
+
+const dir = path.dirname(fileURLToPath(import.meta.url));
+const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer);
+
+// ページは1枚だけ。/r/<code> も同じアプリを返し、クライアントがURLから
+// 部屋コードを読む。部屋のURLがそのまま招待状になる。
+const clientDir = path.join(dir, '..', 'dist');
+app.get(['/', '/r/:code'], (_req, res) => res.sendFile(path.join(clientDir, 'index.html')));
+app.use(express.static(clientDir));
+
+type Ack = (res: { ok: boolean; error?: string; [k: string]: unknown }) => void;
+
+/** ロビー情報。ゲーム開始前はこれだけを配る */
+function lobbyState(room: Room) {
+  return {
+    code: room.code,
+    hostId: room.hostId,
+    mode: room.mode,
+    decks: room.decks,
+    players: room.players.map((p) => ({ id: p.id, name: p.name, connected: p.connected })),
+    started: room.game !== null,
+  };
+}
+
+/**
+ * 全員に同じ状態を送るのではなく、1人ずつ中身を絞って送る。
+ * 手札や山札や乱数シードは、通信を覗かれても分からないようここで落とす。
+ */
+function broadcast(room: Room): void {
+  scheduleTimeout(room);
+  const lobby = lobbyState(room);
+  for (const player of room.players) {
+    if (!player.socketId) continue;
+    io.to(player.socketId).emit('state', {
+      lobby,
+      game: room.game ? viewFor(room.game, player.id) : null,
+      deadline: room.deadline,
+    });
+  }
+}
+
+/**
+ * 制限時間はサーバーが持つ。クライアント側のタイマーに任せると、
+ * そのブラウザが閉じられた瞬間に進行が止まって誰も先に進めなくなる。
+ */
+function scheduleTimeout(room: Room): void {
+  const game = room.game;
+  const limit =
+    game?.phase === 'turn'
+      ? game.settings.timeLimits.turn
+      : game?.phase === 'judge' || game?.phase === 'rate'
+        ? game.settings.timeLimits.judge
+        : null;
+
+  // 同じ局面で時計を張り替えると、状態が更新されるたびに残り時間が巻き戻ってしまう
+  const key = game && limit ? `${game.round}:${game.phase}` : null;
+  if (key === room.timerKey) return;
+
+  if (room.timer) clearTimeout(room.timer);
+  room.timer = null;
+  room.timerKey = key;
+  room.deadline = null;
+  if (!key || !limit) return;
+
+  room.deadline = Date.now() + limit * 1000;
+  room.timer = setTimeout(() => {
+    room.timer = null;
+    room.timerKey = null;
+    if (!room.game) return;
+    room.game = reducer(room.game, { type: 'TIMEOUT' });
+    broadcast(room);
+  }, limit * 1000);
+}
+
+function dispatch(room: Room, action: Action): void {
+  if (!room.game) return;
+  room.game = reducer(room.game, action);
+}
+
+function requireHost(room: Room, socket: Socket, ack?: Ack): boolean {
+  if (socket.data.playerId !== room.hostId) {
+    ack?.({ ok: false, error: 'ホストのみ操作できます' });
+    return false;
+  }
+  return true;
+}
+
+/** 部屋を引くところまでは全ハンドラで同じなので1か所にまとめる */
+function withRoom(
+  socket: Socket,
+  code: string | undefined,
+  ack: Ack | undefined,
+  fn: (room: Room, playerId: string) => void,
+): void {
+  const room = getRoom(code);
+  if (!room) return ack?.({ ok: false, error: 'このURLの部屋は見つかりませんでした' });
+  const playerId = socket.data.playerId as string | undefined;
+  if (!playerId) return ack?.({ ok: false, error: '参加していません' });
+  fn(room, playerId);
+}
+
+io.on('connection', (socket) => {
+  const seat = (room: Room, playerId: string) => {
+    socket.join(room.code);
+    socket.data.code = room.code;
+    socket.data.playerId = playerId;
+  };
+
+  socket.on('room:create', ({ name }: { name: string }, ack?: Ack) => {
+    const trimmed = (name ?? '').trim().slice(0, 12);
+    if (!trimmed) return ack?.({ ok: false, error: '名前を入力してください' });
+    const room = createRoom();
+    const player = addPlayer(room, trimmed, socket.id);
+    seat(room, player.id);
+    ack?.({ ok: true, code: room.code, playerId: player.id });
+    broadcast(room);
+  });
+
+  socket.on('room:join', ({ code, name }: { code: string; name: string }, ack?: Ack) => {
+    const room = getRoom(code);
+    if (!room) return ack?.({ ok: false, error: 'このURLの部屋は見つかりませんでした' });
+    if (room.game) return ack?.({ ok: false, error: 'このゲームはもう始まっています' });
+    if (room.players.length >= 8) return ack?.({ ok: false, error: '定員（8人）に達しています' });
+    const trimmed = (name ?? '').trim().slice(0, 12);
+    if (!trimmed) return ack?.({ ok: false, error: '名前を入力してください' });
+
+    const player = addPlayer(room, trimmed, socket.id);
+    seat(room, player.id);
+    ack?.({ ok: true, code: room.code, playerId: player.id });
+    broadcast(room);
+  });
+
+  socket.on('room:rejoin', ({ code, playerId }: { code: string; playerId: string }, ack?: Ack) => {
+    const room = getRoom(code);
+    if (!room) return ack?.({ ok: false, error: 'このURLの部屋は見つかりませんでした' });
+    const player = reattach(room, playerId, socket.id);
+    if (!player) return ack?.({ ok: false, error: 'プレイヤー情報が見つかりませんでした' });
+    seat(room, player.id);
+    ack?.({ ok: true, code: room.code, playerId: player.id });
+    broadcast(room);
+  });
+
+  socket.on('host:configure', ({ code, mode, decks }: { code: string; mode?: Mode; decks?: DeckId[] }, ack?: Ack) => {
+    withRoom(socket, code, ack, (room) => {
+      if (!requireHost(room, socket, ack)) return;
+      if (room.game) return ack?.({ ok: false, error: 'もう始まっています' });
+      if (mode) room.mode = mode;
+      if (decks) room.decks = ['standard', ...decks.filter((d) => d !== 'standard')];
+      ack?.({ ok: true });
+      broadcast(room);
+    });
+  });
+
+  socket.on('host:start', ({ code }: { code: string }, ack?: Ack) => {
+    withRoom(socket, code, ack, (room) => {
+      if (!requireHost(room, socket, ack)) return;
+      if (room.game) return ack?.({ ok: false, error: 'もう始まっています' });
+      if (room.players.length < 3) return ack?.({ ok: false, error: '3人以上必要です' });
+
+      room.game = reducer({} as never, {
+        type: 'START_GAME',
+        mode: room.mode,
+        names: room.players.map((p) => p.name),
+        settings: {
+          decks: room.decks as DeckId[],
+          exchangeLimit: 2,
+          anonymousSubmission: true,
+          revealRaters: true,
+          timeLimits: DEFAULT_TIME_LIMITS,
+          passAndPlay: false,
+        },
+      });
+      ack?.({ ok: true });
+      broadcast(room);
+    });
+  });
+
+  socket.on('game:action', ({ code, action }: { code: string; action: Action }, ack?: Ack) => {
+    withRoom(socket, code, ack, (room, playerId) => {
+      if (!room.game) return ack?.({ ok: false, error: 'まだ始まっていません' });
+
+      // クライアントが名乗る playerId は信用せず、接続に紐づいた席で上書きする
+      const owned: Action =
+        'playerId' in action ? ({ ...action, playerId } as Action) : action;
+
+      // 進行系（次のラウンドへ）はホストだけ。ほかは本人の行動として通す
+      if (owned.type === 'NEXT_ROUND' && !requireHost(room, socket, ack)) return;
+      if (owned.type === 'START_GAME' || owned.type === 'TIMEOUT' || owned.type === 'TAKE_SEAT') {
+        return ack?.({ ok: false, error: 'この操作はできません' });
+      }
+
+      const before = room.game;
+      dispatch(room, owned);
+      if (room.game === before) return ack?.({ ok: false, error: 'いまその操作はできません' });
+      ack?.({ ok: true });
+      broadcast(room);
+    });
+  });
+
+  socket.on('room:leave', ({ code }: { code: string }, ack?: Ack) => {
+    withRoom(socket, code, ack, (room, playerId) => {
+      removeFromLobby(room, playerId);
+      socket.leave(room.code);
+      socket.data.playerId = undefined;
+      ack?.({ ok: true });
+      broadcast(room);
+    });
+  });
+
+  socket.on('disconnect', () => {
+    const room = getRoom(socket.data.code);
+    if (!room || !socket.data.playerId) return;
+    // 開始前ならロビーから消す。開始後は席を残す（時間切れで自動処理される）
+    if (room.game) markDisconnected(room, socket.data.playerId);
+    else removeFromLobby(room, socket.data.playerId);
+    broadcast(room);
+  });
+});
+
+setInterval(() => sweepIdleRooms(), 30 * 60 * 1000);
+
+const PORT = Number(process.env.PORT) || 3300;
+httpServer.listen(PORT, () => {
+  console.log(`senryu server listening on http://localhost:${PORT}`);
+});
