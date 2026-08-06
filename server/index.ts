@@ -239,7 +239,8 @@ io.on('connection', (socket) => {
 
 setInterval(() => sweepIdleRooms(), 30 * 60 * 1000);
 
-const PORT = Number(process.env.PORT) || 3300;
+// 3300 は ranking-tote が使っているので避ける。本番は Render が PORT を渡す
+const PORT = Number(process.env.PORT) || 3400;
 httpServer.listen(PORT, () => {
   console.log(`senryu server listening on http://localhost:${PORT}`);
 });
