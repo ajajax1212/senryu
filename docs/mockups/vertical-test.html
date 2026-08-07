@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>縦書き検証 — 実データ</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  body { background:#fbf8ff; font-family:'Noto Serif JP',serif; padding:24px; color:#1b1b21; }
+  h2 { font-size:15px; font-weight:600; color:#454652; margin:24px 0 8px; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start; }
+  .card {
+    width:80px; height:150px; background:#fff; border:2px solid #000666;
+    box-shadow:2px 2px 0 0 rgba(0,6,102,.15);
+    display:flex; align-items:center; justify-content:center; padding:8px;
+  }
+  /* Stitch のモックが使っている指定 */
+  .upright { writing-mode:vertical-rl; text-orientation:upright; }
+  /* ラテン文字を寝かせず、正立させたまま扱う代替 */
+  .mixed  { writing-mode:vertical-rl; text-orientation:mixed; }
+  .card span { font-size:19px; line-height:1.25; letter-spacing:.05em; white-space:nowrap; }
+  .label { font-size:11px; color:#767683; text-align:center; width:80px; margin-top:4px; }
+  .wrap { display:flex; flex-direction:column; align-items:center; }
+</style>
+</head>
+<body>
+
+<h2>1. text-orientation: upright（Stitch のモックと同じ指定）</h2>
+<div class="row" id="a"></div>
+
+<h2>2. text-orientation: mixed（ラテン文字を横倒しにする既定の挙動）</h2>
+<div class="row" id="b"></div>
+
+<script>
+// うちの札データから、日本語のみ／ラテン文字混じり／記号混じりを抜き出したもの
+const CARDS = ['月明かり','据え膳','知らんけど','AI絵','Tバック','新NISA','パスワード','ぴえんです'];
+for (const [id, cls] of [['a','upright'], ['b','mixed']]) {
+  document.getElementById(id).innerHTML = CARDS.map(t =>
+    `<div class="wrap"><div class="card"><span class="${cls}">${t}</span></div>
+     <div class="label">${t}</div></div>`).join('');
+}
+</script>
+</body>
+</html>
