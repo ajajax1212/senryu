@@ -66,19 +66,27 @@ export function HaikuView({
   haiku,
   author,
   onClick,
+  /** won なら大きく金の縁、lost なら小さく引く */
+  variant,
+  /** 右下に押す判子の文字 */
+  stamp,
 }: {
   haiku: Haiku;
   author?: string;
   onClick?: () => void;
+  variant?: 'won' | 'lost';
+  stamp?: string;
 }) {
+  const cls = ['haiku', onClick ? 'pickable' : '', variant ?? ''].filter(Boolean).join(' ');
   return (
-    <div className={`haiku${onClick ? ' pickable' : ''}`} onClick={onClick}>
+    <div className={cls} onClick={onClick}>
       <div className="haiku-body">
         <div>{haiku.upper.text}</div>
         <div>{haiku.middle.text}</div>
         <div>{haiku.lower.text}</div>
       </div>
       {author && <div className="author">{author}</div>}
+      {stamp && <div className="hanko">{stamp}</div>}
     </div>
   );
 }

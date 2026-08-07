@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Action, GameState, Haiku } from '../engine/types';
 import { activePlayer, playerById, ranking, totalRounds } from '../engine/reducer';
 import { HaikuView } from './parts';
@@ -112,33 +112,53 @@ export function RoundResult({
   dispatch: (a: Action) => void;
 }) {
   const r = s.lastResult;
+  const won = r?.submissions.find((h) => h.authorId === r.winnerId);
+  // 選ばれた瞬間だけ、画面中央で大きく見せる。数秒で引くか、触れば飛ばせる
+  const [revealing, setRevealing] = useState(Boolean(won));
+
+  useEffect(() => {
+    if (!revealing) return;
+    const t = setTimeout(() => setRevealing(false), 3400);
+    return () => clearTimeout(t);
+  }, [revealing]);
+
   if (!r) return null;
   const name = (id: string) => playerById(s, id)?.name ?? '?';
   const last = s.round + 1 >= totalRounds(s);
 
   return (
     <>
+      {revealing && won && (
+        <div className="reveal" onClick={() => setRevealing(false)}>
+          <div>
+            <div className="reveal-inner">
+              <HaikuView haiku={won} stamp="一" />
+            </div>
+            <div className="reveal-name">{name(r.winnerId!)}</div>
+            <div className="reveal-hint">画面をタップして結果へ</div>
+          </div>
+        </div>
+      )}
+
       <h2>第{s.round + 1}ラウンド 結果</h2>
 
       {r.mode === 'dokudan' ? (
         <>
-          <p className="sub">{activePlayer(s).name} が選んだのは</p>
-          <HaikuView
-            haiku={r.submissions.find((h) => h.authorId === r.winnerId)!}
-            author={`${name(r.winnerId!)} ＋1ポイント`}
-          />
-          {r.submissions.length > 1 && (
-            <>
-              <h3>選ばれなかった句</h3>
-              <div className="board">
-                {r.submissions
-                  .filter((h) => h.authorId !== r.winnerId)
-                  .map((h) => (
-                    <HaikuView key={h.authorId} haiku={h} author={name(h.authorId)} />
-                  ))}
-              </div>
-            </>
-          )}
+          <p className="sub center">{activePlayer(s).name} が選んだのは</p>
+          {/* 勝ち句を先頭に、負け句を小さくして横一列に並べる */}
+          <div className="board">
+            <HaikuView
+              haiku={won!}
+              author={`${name(r.winnerId!)} ＋1ポイント`}
+              variant="won"
+              stamp="一"
+            />
+            {r.submissions
+              .filter((h) => h.authorId !== r.winnerId)
+              .map((h) => (
+                <HaikuView key={h.authorId} haiku={h} author={name(h.authorId)} variant="lost" />
+              ))}
+          </div>
         </>
       ) : (
         <>
