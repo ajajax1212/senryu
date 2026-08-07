@@ -10,12 +10,11 @@
 
 ### MCP からの画面生成は現状うまくいかない
 
-| 呼び方 | 結果 |
-|---|---|
-| `deviceType` を指定 | 即 `invalid argument`。スキーマに存在するのに受け付けない |
-| `deviceType` なし | 受理されるがタイムアウトし、画面は作られない（3回試行して0枚） |
+3回試して0枚。`generate_screen_from_text` は受理されてもタイムアウトし、5分以上待っても画面が作られない。
 
-読み取り系（`list_projects` / `list_screens` / `get_project` / `list_design_systems`）と `update_design_system` は正常に動く。生成だけが通らない。**当面は Stitch の Web UI から生成する**のが確実。
+**`invalid argument` エラーは引数のせいではない。** 当初 `deviceType` が原因だと考えたが、まったく同じ引数の `list_screens` が失敗した直後に成功したため、**サーバー側が散発的に返す一時エラー**と判明した。引数を削って回避しようとしても意味がない。同じ呼び出しをもう一度投げれば通ることが多い。
+
+読み取り系（`list_projects` / `list_screens` / `get_project` / `list_design_systems`）と `update_design_system` は、この揺らぎを除けば正常に動く。通らないのは生成だけ。**当面は Stitch の Web UI から生成する**のが確実。時間を置いて MCP を再試行する価値はある。
 
 ## 使い方
 
