@@ -3,7 +3,10 @@ services:
     name: senryu
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build
+    # Render は NODE_ENV=production を既定で入れる。その状態で `npm install` を使うと
+    # devDependencies が飛ばされ、vite と tsc が無いままビルドに入って落ちる。
+    # --include=dev を明示して、ビルドに必要な道具を必ず入れる。
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
