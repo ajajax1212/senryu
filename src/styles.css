@@ -260,8 +260,13 @@ input[type='text']:focus {
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  /* 縦積みの列に直接置かれたとき、flex項目として幅いっぱいに
+     引き伸ばされてしまうのを防ぐ。札は中身なりの幅で中央に置く */
+  align-self: center;
   transition: transform 0.15s, border-color 0.12s;
 }
+/* 並べる場では上端を揃える */
+.board > .haiku { align-self: flex-start; }
 .haiku.pickable { cursor: pointer; }
 .haiku.pickable:hover {
   transform: translateY(-4px);
@@ -531,6 +536,55 @@ tr.winner td {
 }
 .timer.urgent .timer-bar { background: rgba(181, 26, 27, 0.3); }
 .timer.urgent .timer-label { color: var(--vermilion); }
+
+/* ── タイトル ── */
+.title-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0 4px;
+}
+/* 題字。札と同じ和紙と藍の枠に収める */
+.title-mark {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  color: var(--indigo);
+  background: var(--paper-card);
+  border: 3px solid var(--indigo);
+  border-radius: 2px;
+  padding: 26px 20px;
+  box-shadow: 5px 5px 0 0 rgba(0, 6, 102, 0.16);
+}
+
+/* ボタンを画面幅いっぱいに伸ばすと間延びするので、行動列に上限を設ける */
+.title-actions {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+/* 見出しを兼ねた区切り線。巻物の罫のような破線を左右に伸ばす */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--sumi-faint);
+}
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px dashed var(--rule);
+}
 
 /* ── 引き継ぎ（1台をまわす版） ── */
 .handoff {

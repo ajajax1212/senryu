@@ -22,29 +22,32 @@ export function App() {
 function Title({ onPick }: { onPick: (r: Route) => void }) {
   return (
     <>
-      <h1>五七五</h1>
-      <p className="sub center">
-        配られた札で川柳を作り、人間の主観だけで勝敗を決める。
-      </p>
+      <div className="title-block">
+        {/* 題字は縦書き。札と同じ和紙の枠に収める */}
+        <div className="title-mark">五七五</div>
+        <p className="sub center">配られた札で川柳を作り、人間の主観だけで勝敗を決める</p>
+      </div>
 
-      <div className="col grow" style={{ justifyContent: 'center' }}>
+      <div className="col title-actions">
         <button className="primary wide" onClick={() => onPick({ kind: 'online' })}>
           オンラインで遊ぶ
         </button>
-        <p className="sub">
-          部屋を作ってURLを配る。各自が自分のPCで手札を見るので、全員同時に作句できる。
+        <p className="sub center">
+          部屋を作ってURLを配る。各自が自分の画面で手札を見るので全員同時に作れる
         </p>
 
-        <h3 style={{ marginTop: 20 }}>1台をまわして遊ぶ</h3>
-        <p className="sub">
-          スマホ1台を手渡しで回す。手番のたびに手札を隠す画面を挟む。
-        </p>
-        <button className="wide" onClick={() => onPick({ kind: 'local', mode: 'dokudan' })}>
-          独断と偏見モード
-        </button>
-        <button className="wide" onClick={() => onPick({ kind: 'local', mode: 'contest' })}>
-          コンテストモード
-        </button>
+        <div className="divider">
+          <span>1台をまわして遊ぶ</span>
+        </div>
+        <p className="sub center">スマホ1台を手渡しで回す。手番のたびに手札を隠す</p>
+        <div className="row">
+          <button className="grow" onClick={() => onPick({ kind: 'local', mode: 'dokudan' })}>
+            独断と偏見
+          </button>
+          <button className="grow" onClick={() => onPick({ kind: 'local', mode: 'contest' })}>
+            コンテスト
+          </button>
+        </div>
       </div>
     </>
   );
