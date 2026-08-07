@@ -9,13 +9,32 @@
 
 ## 動かす
 
+**このディレクトリ（`senryu-game`）で実行すること。** 1つ上の `claude` フォルダで叩くと
+package.json が見つからず `npm error code ENOENT` になる。
+
+```bash
+cd C:\Users\Owner\Desktop\claude\senryu-game
+```
+
 ```bash
 npm.cmd install
+```
+
+```bash
 npm.cmd run build
+```
+
+```bash
 npm.cmd start
 ```
 
 `http://localhost:3400` を開く。`PORT` 環境変数で変更できる。
+
+親ディレクトリから直接動かしたいときは `--prefix` を付ける。
+
+```bash
+npm.cmd start --prefix senryu-game
+```
 
 | コマンド | 内容 |
 |---|---|
