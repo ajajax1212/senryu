@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Action, Card, GameState } from '../engine/types';
 import { activePlayer, playerById, remainingExchanges } from '../engine/reducer';
-import { CardView } from './parts';
+import { CardView, HaikuView } from './parts';
 
 /** 選択中の札。時間切れの自動提出に渡すので画面より上で保持する */
 export type Draft = { upperId?: string; middleId?: string; lowerId?: string };
@@ -108,10 +108,11 @@ export function Turn({
 
       {tab === 'compose' ? (
         <>
+          {/* 縦書きなので右から左に読む。表示順の反転は CSS 側（row-reverse）で行う */}
           <div className="slots">
-            <Slot label="上の句（5音）" card={upper} onClear={() => setDraft({ ...draft, upperId: undefined })} />
-            <Slot label="中の句（7音）" card={middle} onClear={() => setDraft({ ...draft, middleId: undefined })} />
-            <Slot label="下の句（5音）" card={lower} onClear={() => setDraft({ ...draft, lowerId: undefined })} />
+            <Slot mora={5} hint="上の句" card={upper} onClear={() => setDraft({ ...draft, upperId: undefined })} />
+            <Slot mora={7} hint="中の句" card={middle} onClear={() => setDraft({ ...draft, middleId: undefined })} />
+            <Slot mora={5} hint="下の句" card={lower} onClear={() => setDraft({ ...draft, lowerId: undefined })} />
           </div>
           <button
             className="ghost wide"
@@ -207,10 +208,8 @@ function Waiting({ s, me }: { s: GameState; me: string }) {
       <h2>{isHost ? 'あなたが親です' : '提出しました'}</h2>
       {isHost && <p className="sub center">句は作りません。出そろったら好きな1句を選んでください。</p>}
       {mine && (
-        <div className="haiku">
-          <div>{mine.upper.text}</div>
-          <div>{mine.middle.text}</div>
-          <div>{mine.lower.text}</div>
+        <div className="board">
+          <HaikuView haiku={mine} />
         </div>
       )}
       <div className="panel col center">
@@ -221,10 +220,30 @@ function Waiting({ s, me }: { s: GameState; me: string }) {
   );
 }
 
-function Slot({ label, card, onClear }: { label: string; card: Card | null; onClear: () => void }) {
+/**
+ * 句の1マス。上に大きく薄い「五」「七」を出して音数を示す。
+ * 並びの左右は .slots の row-reverse が担当するので、ここは順序を意識しない。
+ */
+function Slot({
+  mora,
+  hint,
+  card,
+  onClear,
+}: {
+  mora: 5 | 7;
+  hint: string;
+  card: Card | null;
+  onClear: () => void;
+}) {
   return (
-    <div className={`slot${card ? ' filled' : ''}`} onClick={card ? onClear : undefined}>
-      {card ? card.text : <span className="hint">{label}</span>}
+    <div className="slot-wrap">
+      <div className="slot-mora">{mora === 7 ? '七' : '五'}</div>
+      <div
+        className={`slot${card ? ' filled' : ''}${mora === 7 ? ' tall' : ''}`}
+        onClick={card ? onClear : undefined}
+      >
+        {card ? card.text : <span className="hint">{hint}</span>}
+      </div>
     </div>
   );
 }

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Senryu Forge - Title Screen</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;600;700&amp;family=Work+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#000666",
+                        "error-container": "#ffdad6",
+                        "primary-fixed": "#e0e0ff",
+                        "surface-container": "#efecf5",
+                        "surface-variant": "#e4e1ea",
+                        "tertiary-fixed-dim": "#ffb59d",
+                        "secondary": "#b51a1b",
+                        "tertiary": "#380b00",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-container": "#fffbff",
+                        "primary-fixed-dim": "#bdc2ff",
+                        "on-tertiary-fixed-variant": "#7b2e12",
+                        "surface-container-lowest": "#ffffff",
+                        "surface": "#fbf8ff",
+                        "surface-bright": "#fbf8ff",
+                        "on-primary-fixed": "#000767",
+                        "surface-container-high": "#eae7ef",
+                        "secondary-container": "#d93630",
+                        "surface-container-highest": "#e4e1ea",
+                        "on-error-container": "#93000a",
+                        "background": "#fbf8ff",
+                        "on-primary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "tertiary-container": "#5c1800",
+                        "on-surface-variant": "#454652",
+                        "inverse-primary": "#bdc2ff",
+                        "on-tertiary-fixed": "#390c00",
+                        "secondary-fixed-dim": "#ffb4ab",
+                        "on-tertiary-container": "#e17c5a",
+                        "outline": "#767683",
+                        "surface-dim": "#dbd9e1",
+                        "on-background": "#1b1b21",
+                        "on-secondary-fixed": "#410002",
+                        "on-error": "#ffffff",
+                        "secondary-fixed": "#ffdad6",
+                        "on-primary-fixed-variant": "#343d96",
+                        "tertiary-fixed": "#ffdbd0",
+                        "inverse-on-surface": "#f2eff8",
+                        "surface-tint": "#4c56af",
+                        "on-surface": "#1b1b21",
+                        "primary-container": "#1a237e",
+                        "on-primary-container": "#8690ee",
+                        "inverse-surface": "#303036",
+                        "outline-variant": "#c6c5d4",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed-variant": "#93000b",
+                        "surface-container-low": "#f5f2fb"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "unit": "8px",
+                        "margin-desktop": "64px",
+                        "card-gap": "12px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "display-poem": ["Noto Serif"],
+                        "headline-lg": ["Noto Serif"],
+                        "body-md": ["Noto Serif"],
+                        "ui-label": ["Work Sans"],
+                        "display-poem-mobile": ["Noto Serif"],
+                        "ui-button": ["Work Sans"]
+                    },
+                    "fontSize": {
+                        "display-poem": ["40px", { "lineHeight": "56px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "44px", "fontWeight": "600" }],
+                        "body-md": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "ui-label": ["14px", { "lineHeight": "20px", "letterSpacing": "0.1em", "fontWeight": "600" }],
+                        "display-poem-mobile": ["28px", { "lineHeight": "40px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "ui-button": ["16px", { "lineHeight": "24px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>.washi-texture {
+    background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuB7LV3BDn0hX_Mtm7u0NTrHxNdUgjYSoaTFVyDeN4A-Qdd58xrzH3PVZQVs6q463hwJYTJ2lM12ZNlfJk3SKoTycJqn_LWH4X6Tgamk8w1aanXFhTVS_hSrg9rU5mW71O3jtAIPKi-2BW_SY79v7bkD-JnmG-1fnCquf8KJF_LoIUEsLOhJ6CS2MkUXNQSR0yjCOr586SyS5dLzGXiaT6Lnx-NQSBx5zcXKUvB32eBOpxSFbQXZIYAb);
+    background-size: cover;
+    background-position: center
+    }
+.hanko-button {
+    transition: transform 0.1s ease, box-shadow 0.1s ease
+    }
+.hanko-button:active {
+    transform: translatey(4px);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2)
+    }
+.writing-vertical-rl {
+    writing-mode: vertical-rl;
+    text-orientation: upright
+    }</style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md overflow-x-hidden relative washi-texture">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim bg-surface-container-low dark:bg-surface-container shadow-[2px_2px_0px_0px_rgba(0,6,102,0.15)] docked full-width top-0 z-50 sticky">
+<div class="flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop py-unit max-w-screen-2xl mx-auto">
+<div class="text-headline-lg font-headline-lg font-bold text-primary dark:text-primary-fixed-dim">
+                Senryu Forge
+            </div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col items-center justify-center relative z-10 px-margin-mobile md:px-margin-desktop py-12 md:py-24">
+<!-- Ink Splash Accent (Decorative) -->
+<div class="absolute top-0 right-0 w-64 h-64 md:w-96 md:h-96 opacity-10 pointer-events-none" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD7C0y4Uw9K1miu7CEyd4d9tQKOv22iDiB4h5I541hDtUraQzWrStcbvGtMiixZnuXG4d6h7ZT2NaGnloeol4JxmYlA50dKfWJ_687iAU_HFJDwOA03H-5M3VV75uQYXP234slZpXL3gEZ-abEScB3-ZkRR0_tfGlnXp43ZuT0S19qX1auL6uZJVkdW3EM28OtYoXwrge46g5fPpD22fSxvg3LR5Exm5_44GJikEZzpsJ8P9niRZc4Q'); background-size: contain; background-repeat: no-repeat; background-position: top right;"></div>
+<!-- Title Container -->
+<div class="mb-16 md:mb-24 flex flex-col items-center text-center relative z-20">
+<!-- Vertical Japanese Title -->
+<h1 class="font-display-poem text-display-poem-mobile md:text-display-poem text-primary tracking-widest writing-vertical-rl h-64 md:h-96 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.05)] bg-surface-container-lowest/50 p-6 md:p-8 rounded border border-outline-variant/30 backdrop-blur-sm">五七五</h1>
+</div>
+<!-- Call to Action Actions -->
+<div class="flex flex-col items-center gap-card-gap w-full max-w-sm relative z-20"><div class="w-full flex flex-col gap-6"><div class="flex flex-col gap-2"><button class="hanko-button w-full bg-secondary text-on-secondary font-ui-button text-ui-button py-4 px-8 shadow-[4px_4px_0px_0px_rgba(56,11,0,0.3)] hover:bg-secondary-container transition-all duration-200 border-2 border-secondary flex items-center justify-center gap-2 group">オンラインで遊ぶ</button><p class="text-ui-label text-on-surface-variant text-center px-2">部屋を作ってURLを配る。各自の画面で手札を見るので全員同時に作れる</p></div><div class="flex flex-col gap-2"><button class="w-full bg-surface text-on-surface font-ui-label text-ui-label py-3 px-6 shadow-[2px_2px_0px_0px_rgba(0,6,102,0.1)] hover:bg-surface-variant transition-all duration-200 border border-outline-variant flex items-center justify-center gap-2 rounded">1台をまわして遊ぶ</button><p class="text-ui-label text-on-surface-variant text-center px-2">スマホ1台を手渡しで回す。手番のたびに手札を隠す</p></div><div class="mt-4 text-center"><a class="text-primary font-ui-label hover:underline" href="#">遊び方</a></div></div></div>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-lowest dark:bg-surface-container-low border-t border-dashed border-outline-variant dark:border-outline mt-auto relative z-20">
+<div class="flex flex-col md:flex-row justify-between items-center w-full px-margin-mobile md:px-margin-desktop py-gutter gap-unit max-w-screen-2xl mx-auto">
+<div class="text-ui-label font-ui-label font-semibold text-tertiary dark:text-tertiary-fixed">
+                © 2024 Neo-Wabi-Sabi Studio. Crafted with Sumi-e Spirit.
+            </div>
+<nav class="flex gap-gutter items-center">
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-secondary dark:hover:text-secondary-fixed transition-colors text-ui-label font-ui-label" href="#">Privacy</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-secondary dark:hover:text-secondary-fixed transition-colors text-ui-label font-ui-label" href="#">Support</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-secondary dark:hover:text-secondary-fixed transition-colors text-ui-label font-ui-label" href="#">Artist Credits</a>
+</nav>
+</div>
+</footer>
+</body></html>

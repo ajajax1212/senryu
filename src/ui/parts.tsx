@@ -57,6 +57,11 @@ export function CardView({
   );
 }
 
+/**
+ * 縦書きの句。3つの句は .haiku-body の中で通常のブロックとして積まれ、
+ * vertical-rl によって右から左の3列になる（上の句が右端）。
+ * 作者名は横書きに戻すため、縦書きの外に出してある。
+ */
 export function HaikuView({
   haiku,
   author,
@@ -68,9 +73,11 @@ export function HaikuView({
 }) {
   return (
     <div className={`haiku${onClick ? ' pickable' : ''}`} onClick={onClick}>
-      <div>{haiku.upper.text}</div>
-      <div>{haiku.middle.text}</div>
-      <div>{haiku.lower.text}</div>
+      <div className="haiku-body">
+        <div>{haiku.upper.text}</div>
+        <div>{haiku.middle.text}</div>
+        <div>{haiku.lower.text}</div>
+      </div>
       {author && <div className="author">{author}</div>}
     </div>
   );

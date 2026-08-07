@@ -20,7 +20,7 @@ export function Judge({
       <>
         <h2>{host.name} が選んでいます</h2>
         <p className="sub center">全員の句が出そろいました。親の独断と偏見をお待ちください。</p>
-        <div className="col">
+        <div className="board">
           {board.map((h, i) => (
             <HaikuView key={i} haiku={h} />
           ))}
@@ -35,7 +35,7 @@ export function Judge({
       <p className="sub">
         一番良かった句をタップして選んでください。理由は要りません。好みで決めてください。
       </p>
-      <div className="col">
+      <div className="board">
         {board.map((h, i) => (
           <HaikuView
             key={i}
@@ -130,7 +130,7 @@ export function RoundResult({
           {r.submissions.length > 1 && (
             <>
               <h3>選ばれなかった句</h3>
-              <div className="col">
+              <div className="board">
                 {r.submissions
                   .filter((h) => h.authorId !== r.winnerId)
                   .map((h) => (

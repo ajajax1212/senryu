@@ -1,16 +1,36 @@
+/*
+ * 「Neo-Wabi-Sabi」— Stitch のモックから構成と美学を取り込んだもの。
+ * 素材は外部画像に頼らずCSSで作る。Stitch が吐く画像URLは一時的なもので消えるため。
+ */
 :root {
-  --bg: #14110f;
-  --panel: #1f1b18;
-  --panel-2: #2a2521;
-  --ink: #f2ece4;
-  --ink-dim: #9d9389;
-  --line: #3a332d;
-  --accent: #d4614a;
-  --accent-dim: #7a3528;
-  --gold: #c9a227;
-  --paper: #f4efe4;
-  --paper-ink: #201c18;
-  font-family: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif;
+  /* 藍。枠線・札の文字・主要なUI */
+  --indigo: #000666;
+  --indigo-soft: #343d96;
+  /* 朱。判子・勝ち・強調。使いすぎない */
+  --vermilion: #b51a1b;
+  --vermilion-bright: #d93630;
+
+  /* 生成りの和紙。トークンの #fbf8ff は青寄りで冷たいので、
+     designMd の "warm, low-glare cream" の記述に寄せて温かみを足している */
+  --paper: #f7f4ec;
+  --paper-card: #fffdf7;
+  --paper-panel: #f1ece0;
+  --paper-sunk: #e8e2d4;
+
+  /* 墨。真っ黒ではなく乾いた炭の色 */
+  --sumi: #1b1b21;
+  --sumi-soft: #454652;
+  --sumi-faint: #8b8578;
+  --rule: #cfc7b6;
+
+  --gold: #a8842c;
+
+  --font-poem: 'Noto Serif JP', 'Yu Mincho', serif;
+  --font-ui: 'Work Sans', 'Noto Sans JP', sans-serif;
+
+  /* 物として置かれている感じを出す、ぼかさない落ち影 */
+  --lift: 2px 2px 0 0 rgba(0, 6, 102, 0.16);
+  --lift-hanko: 4px 4px 0 0 rgba(181, 26, 27, 0.32);
 }
 
 * {
@@ -20,10 +40,15 @@
 }
 
 body {
-  background: var(--bg);
-  color: var(--ink);
+  color: var(--sumi);
+  font-family: var(--font-poem);
   min-height: 100dvh;
   -webkit-text-size-adjust: 100%;
+  background-color: var(--paper);
+  /* 和紙の粒子。等間隔の線を重ねると縞に見えてしまうので、SVGのノイズで
+     不規則な繊維を作る。外部画像は使わない（Stitchの画像URLは消えるため）。
+     色のグラデーションは絶対に敷かない。敷くと本文が背景に沈んで読めなくなる */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23f)' opacity='0.05'/%3E%3C/svg%3E");
 }
 
 #root {
@@ -38,251 +63,347 @@ body {
 
 h1 {
   font-size: 34px;
-  letter-spacing: 0.28em;
+  font-weight: 700;
+  letter-spacing: 0.24em;
   text-align: center;
-  margin: 28px 0 4px;
+  color: var(--indigo);
+  margin: 20px 0 4px;
 }
 h2 {
-  font-size: 20px;
-  letter-spacing: 0.1em;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--indigo);
 }
 h3 {
-  font-size: 15px;
-  color: var(--ink-dim);
-  letter-spacing: 0.08em;
-  font-weight: normal;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--sumi-faint);
+  text-transform: uppercase;
 }
 
 .sub {
-  color: var(--ink-dim);
   font-size: 13px;
-  line-height: 1.7;
+  line-height: 1.85;
+  color: var(--sumi-soft);
 }
-.center {
-  text-align: center;
-}
-.grow {
-  flex: 1;
-}
-.row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-.col {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
+.center { text-align: center; }
+.grow { flex: 1; }
+.row { display: flex; gap: 10px; align-items: center; }
+.col { display: flex; flex-direction: column; gap: 12px; }
 
-/* ── ボタン ── */
+/* ── 判子ボタン ──
+   木の判子を押す感覚。角丸なし、影はぼかさない、押すと沈む */
 button {
-  font: inherit;
-  color: inherit;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 14px 18px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--sumi);
+  background: var(--paper-card);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 13px 18px;
   cursor: pointer;
-  letter-spacing: 0.08em;
-  transition: background 0.12s, border-color 0.12s;
+  box-shadow: var(--lift);
+  transition: transform 0.08s, box-shadow 0.08s, background 0.15s;
 }
-button:hover:not(:disabled) {
-  border-color: var(--ink-dim);
+button:hover:not(:disabled) { background: #fff; }
+button:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: none;
 }
 button:disabled {
-  opacity: 0.35;
+  opacity: 0.42;
   cursor: not-allowed;
+  box-shadow: none;
 }
 button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--vermilion);
+  border-color: var(--vermilion);
   color: #fff;
-  font-size: 17px;
+  font-size: 16px;
+  font-weight: 700;
   padding: 16px;
+  box-shadow: var(--lift-hanko);
 }
-button.primary:hover:not(:disabled) {
-  background: #e0705a;
-}
+button.primary:hover:not(:disabled) { background: var(--vermilion-bright); }
 button.ghost {
   background: transparent;
+  box-shadow: none;
+  border-color: var(--rule);
 }
-button.wide {
-  width: 100%;
-}
+button.ghost:hover:not(:disabled) { background: rgba(255, 255, 255, 0.5); }
+button.wide { width: 100%; }
 
 input[type='text'] {
-  font: inherit;
-  background: var(--panel);
-  color: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 12px 14px;
+  font-family: var(--font-poem);
+  font-size: 16px;
+  color: var(--sumi);
+  background: transparent;
+  border: none;
+  /* 一本の墨線。囲わない */
+  border-bottom: 1.5px solid var(--sumi);
+  border-radius: 0;
+  padding: 10px 2px;
   width: 100%;
 }
 input[type='text']:focus {
   outline: none;
-  border-color: var(--accent);
+  border-bottom-color: var(--vermilion);
 }
 
-/* ── 札 ── */
+/* ── 札 ──
+   花札に倣った太い藍の枠。文字は必ず縦書き。
+   upright にしないと「AI絵」「新NISA」のラテン文字が横倒しになる */
 .card {
-  background: var(--paper);
-  color: var(--paper-ink);
-  border-radius: 6px;
-  padding: 12px 10px;
-  text-align: center;
-  cursor: pointer;
-  border: 2px solid transparent;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
-  user-select: none;
-  transition: transform 0.1s, border-color 0.12s, opacity 0.12s;
-}
-.card:active {
-  transform: scale(0.97);
-}
-.card .text {
-  font-size: 18px;
-  letter-spacing: 0.06em;
-  line-height: 1.3;
-}
-.card .reading {
-  font-size: 10px;
-  color: #7a7168;
-  margin-top: 4px;
-  letter-spacing: 0.04em;
-}
-.card.m7 {
-  background: #efe6d2;
-}
-.card.selected {
-  border-color: var(--accent);
-}
-.card.discarding {
-  opacity: 0.4;
-  border-color: var(--accent-dim);
-}
-.card.static {
-  cursor: default;
-}
-.card.static:active {
-  transform: none;
-}
-
-.hand {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-.hand.sevens {
-  grid-template-columns: repeat(2, 1fr);
-}
-
-.panel {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 16px;
-}
-
-.discard-pile {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  max-height: 220px;
-  overflow-y: auto;
-}
-.discard-pile .owner {
-  font-size: 9px;
-  color: #8a8177;
-  margin-top: 3px;
-}
-
-/* ── 句の表示 ── */
-.haiku {
-  background: var(--paper);
-  color: var(--paper-ink);
-  border-radius: 8px;
-  padding: 20px 16px;
-  text-align: center;
-  line-height: 2.1;
-  font-size: 21px;
-  letter-spacing: 0.1em;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
-}
-.haiku.pickable {
-  cursor: pointer;
-  border: 2px solid transparent;
-}
-.haiku.pickable:hover {
-  border-color: var(--accent);
-}
-.haiku .author {
-  font-size: 12px;
-  color: #7a7168;
-  letter-spacing: 0.06em;
-  margin-top: 10px;
-}
-.haiku .slot-empty {
-  color: #b9b0a4;
-}
-
-.slots {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.slot {
-  background: var(--panel-2);
-  border: 1px dashed var(--line);
-  border-radius: 8px;
-  padding: 14px;
-  text-align: center;
-  cursor: pointer;
-  min-height: 56px;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  background: var(--paper-card);
+  color: var(--indigo);
+  border: 2px solid var(--indigo);
+  border-radius: 2px;
+  box-shadow: var(--lift);
+  width: 62px;
+  height: 146px;
+  padding: 10px 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 3px;
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+  transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
 }
-.slot.filled {
-  background: var(--paper);
-  color: var(--paper-ink);
-  border-style: solid;
-  border-color: transparent;
+/* 7音札は縦に長い。音数が一目で分かるように */
+.card.m7 { height: 196px; }
+.card:hover { transform: translateY(-3px); box-shadow: 3px 5px 0 0 rgba(0, 6, 102, 0.18); }
+.card:active { transform: translateY(2px); box-shadow: none; }
+.card .text {
   font-size: 19px;
+  font-weight: 600;
   letter-spacing: 0.08em;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+/* 読みは札の脇に細く添える。ふりがなの位置 */
+.card .reading {
+  font-size: 9px;
+  color: var(--sumi-faint);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+.card.m7 .text { font-size: 18px; }
+.card.selected {
+  border-color: var(--vermilion);
+  box-shadow: 3px 3px 0 0 rgba(181, 26, 27, 0.3);
+}
+.card.discarding {
+  opacity: 0.45;
+  border-style: dashed;
+  border-color: var(--vermilion);
+}
+.card.static { cursor: default; }
+.card.static:hover { transform: none; box-shadow: var(--lift); }
+
+.hand {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.panel {
+  background: var(--paper-panel);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 16px;
+  box-shadow: var(--lift);
+}
+
+.discard-pile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.discard-pile .owner {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  color: var(--sumi-faint);
+  text-align: center;
+  margin-top: 4px;
+  letter-spacing: 0.04em;
+}
+
+/* ── 句の表示 ──
+   外枠は横書きのまま。中の句だけを縦書きにする。
+   縦書きの中で flex を使ってはいけない。vertical-rl ではインライン軸が
+   縦になるため、flex-direction:row が3句を横並びではなく縦に積んでしまう。
+   通常のブロック配置なら、そのまま右→左の3列になる */
+.haiku {
+  background: var(--paper-card);
+  color: var(--sumi);
+  border: 8px solid var(--indigo);
+  border-radius: 2px;
+  padding: 20px 18px 14px;
+  box-shadow: 5px 5px 0 0 rgba(0, 6, 102, 0.16);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  transition: transform 0.15s, border-color 0.12s;
+}
+.haiku.pickable { cursor: pointer; }
+.haiku.pickable:hover {
+  transform: translateY(-4px);
+  border-color: var(--vermilion);
+}
+
+.haiku-body {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  min-height: 300px;
+}
+.haiku-body > div { white-space: nowrap; }
+/* 縦書きでは block 方向が右→左なので、列の間隔は margin-block-end */
+.haiku-body > div + div { margin-block-end: 0; }
+.haiku-body > div:not(:last-child) { margin-block-end: 22px; }
+
+/* 作者名は横書き */
+.haiku .author {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--sumi-faint);
+  white-space: nowrap;
+}
+
+/* 審査画面で句を並べる場。PCでは横に並べて見比べられるように */
+.board {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* ── 句を組むスロット ──
+   縦書きに合わせて右から左に読む。row-reverse で見た目だけ反転させ、
+   DOMは上句→中句→下句の論理順のまま保つ */
+.slots {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 8px 0;
+}
+.slot-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+/* 五 / 七 / 五 のラベル。薄い墨で大きく */
+.slot-mora {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--indigo);
+  opacity: 0.22;
+  line-height: 1;
+}
+.slot {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  width: 62px;
+  height: 146px;
+  border: 2px dashed var(--sumi-faint);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--indigo);
+  white-space: nowrap;
+  transition: border-color 0.12s, background 0.12s;
+}
+.slot.tall { height: 196px; }
+.slot.filled {
+  background: var(--paper-card);
+  border: 2px solid var(--indigo);
+  box-shadow: var(--lift);
 }
 .slot .hint {
-  color: var(--ink-dim);
-  font-size: 13px;
+  writing-mode: horizontal-tb;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--sumi-faint);
+  text-align: center;
+  line-height: 1.5;
 }
-.slot.active {
-  border-color: var(--accent);
+
+/* ── 作句／交換の切り替え ── */
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-bottom: 1px solid var(--rule);
+}
+.tabs button {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 11px;
+  color: var(--sumi-faint);
+}
+.tabs button:hover { background: rgba(255, 255, 255, 0.4); }
+.tabs button:active { transform: none; }
+.tabs button.on {
+  color: var(--indigo);
+  border-bottom-color: var(--vermilion);
 }
 
 /* ── 採点 ── */
 .score-display {
-  font-size: 64px;
+  font-family: var(--font-poem);
+  font-size: 60px;
+  font-weight: 700;
   text-align: center;
-  color: var(--gold);
+  color: var(--vermilion);
   letter-spacing: 0.04em;
+  line-height: 1.1;
 }
 input[type='range'] {
   width: 100%;
-  accent-color: var(--accent);
+  accent-color: var(--vermilion);
   height: 34px;
 }
-
 .quick-scores {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
 }
-.quick-scores button {
-  padding: 10px 0;
-  font-size: 14px;
-}
+.quick-scores button { padding: 10px 0; font-size: 13px; }
 
 /* ── 結果 ── */
 table {
@@ -292,173 +413,149 @@ table {
 }
 th,
 td {
-  padding: 10px 8px;
+  padding: 11px 8px;
   text-align: left;
-  border-bottom: 1px solid var(--line);
+  /* 巻物に引いた手書きの罫のような破線 */
+  border-bottom: 1px dashed var(--rule);
 }
 th {
-  color: var(--ink-dim);
-  font-weight: normal;
-  font-size: 13px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--sumi-faint);
+  text-transform: uppercase;
 }
 td.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 tr.winner td {
-  color: var(--gold);
+  color: var(--vermilion);
+  font-weight: 700;
 }
 
 .badge {
   display: inline-block;
-  font-size: 11px;
-  padding: 3px 9px;
-  border-radius: 99px;
-  border: 1px solid var(--line);
-  color: var(--ink-dim);
-  letter-spacing: 0.06em;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 2px;
+  border: 1px solid var(--rule);
+  color: var(--sumi-faint);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
 }
-.badge.on {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.badge.r18 {
-  border-color: var(--accent);
-  color: var(--accent);
-}
+.badge.on { border-color: var(--indigo); color: var(--indigo); }
+.badge.r18 { border-color: var(--vermilion); color: var(--vermilion); }
 
 .deck-option {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  padding: 13px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--paper-card);
   cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
 }
 .deck-option.on {
-  border-color: var(--accent);
-  background: rgba(212, 97, 74, 0.08);
+  border-color: var(--indigo);
+  background: #fff;
 }
-.deck-option.locked {
-  opacity: 0.7;
-  cursor: default;
-}
+.deck-option.locked { opacity: 0.72; cursor: default; }
 .deck-option .check {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  border: 1px solid var(--line);
+  width: 21px;
+  height: 21px;
+  border-radius: 2px;
+  border: 1px solid var(--rule);
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: 12px;
+  background: #fff;
 }
 .deck-option.on .check {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--indigo);
+  border-color: var(--indigo);
   color: #fff;
 }
 
-/* ── 作句／交換の切り替え ── */
-.tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 4px;
-}
-.tabs button {
-  background: transparent;
-  border: none;
-  padding: 10px;
-  font-size: 14px;
-  border-radius: 7px;
-  color: var(--ink-dim);
-}
-.tabs button.on {
-  background: var(--panel-2);
-  color: var(--ink);
-}
-
 .invite {
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 12px;
-  font-size: 13px;
-  word-break: break-all;
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 11px;
   font-family: ui-monospace, monospace;
+  font-size: 12px;
+  word-break: break-all;
 }
 
 .error {
-  background: rgba(212, 97, 74, 0.14);
-  border: 1px solid var(--accent-dim);
-  border-radius: 8px;
+  background: rgba(181, 26, 27, 0.1);
+  border-left: 3px solid var(--vermilion);
   padding: 10px 12px;
   font-size: 13px;
-  color: var(--accent);
-}
-
-/* PCで開いたときは手札を1行に伸ばす。オンラインはPC前提 */
-@media (min-width: 720px) {
-  #root {
-    max-width: 760px;
-  }
-  .hand {
-    grid-template-columns: repeat(4, 1fr);
-  }
-  .discard-pile {
-    grid-template-columns: repeat(5, 1fr);
-    max-height: 300px;
-  }
+  color: var(--vermilion);
 }
 
 /* ── 残り時間 ── */
 .timer {
   position: relative;
-  height: 26px;
-  border-radius: 99px;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
+  height: 24px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--paper-sunk);
   overflow: hidden;
   flex-shrink: 0;
 }
 .timer-bar {
   position: absolute;
   inset: 0 auto 0 0;
-  background: var(--accent-dim);
+  background: rgba(0, 6, 102, 0.16);
   transition: width 0.25s linear;
 }
 .timer-label {
   position: relative;
   display: block;
   text-align: center;
-  line-height: 24px;
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  color: var(--ink-dim);
+  line-height: 22px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--sumi-soft);
   font-variant-numeric: tabular-nums;
 }
-.timer.urgent .timer-bar {
-  background: var(--accent);
-}
-.timer.urgent .timer-label {
-  color: #fff;
-}
+.timer.urgent .timer-bar { background: rgba(181, 26, 27, 0.3); }
+.timer.urgent .timer-label { color: var(--vermilion); }
 
+/* ── 引き継ぎ（1台をまわす版） ── */
 .handoff {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 24px;
+  gap: 22px;
   text-align: center;
 }
 .handoff .name {
   font-size: 40px;
-  letter-spacing: 0.12em;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--indigo);
+}
+
+/* PCで開いたときは広く使う。オンラインはPC前提 */
+@media (min-width: 720px) {
+  #root {
+    max-width: 800px;
+    padding: 24px 32px 40px;
+  }
+  .slots { gap: 24px; }
+  .haiku { font-size: 30px; min-height: 300px; }
+  .discard-pile { max-height: 320px; }
 }
