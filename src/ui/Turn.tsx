@@ -92,9 +92,9 @@ export function Turn({
 
   return (
     <>
-      <div className="row">
-        <h2 className="grow">{player.name} の手番</h2>
-        <span className={`badge${left > 0 ? ' on' : ''}`}>交換 残り{left}回</span>
+      <div className="turn-head">
+        <h2>{player.name} の手番</h2>
+        <span className={`pill${left > 0 ? ' on' : ''}`}>交換 残り{left}回</span>
       </div>
 
       <div className="tabs">
@@ -115,7 +115,7 @@ export function Turn({
             <Slot mora={5} hint="下の句" card={lower} onClear={() => setDraft({ ...draft, lowerId: undefined })} />
           </div>
           <button
-            className="ghost wide"
+            className="ghost chip-btn"
             disabled={!upper || !lower}
             onClick={() => setDraft({ ...draft, upperId: draft.lowerId, lowerId: draft.upperId })}
           >
@@ -128,21 +128,17 @@ export function Turn({
         </p>
       )}
 
-      <h3>手札</h3>
+      <div className="label-mark">手札</div>
+      {/* 5音と7音を1行に混ぜ、下端を揃える。背の差がそのまま扇の抑揚になる */}
       <div className="hand">
-        {five.map((c) => (
-          <CardView key={c.id} card={c} {...handProps(c)} />
-        ))}
-      </div>
-      <div className="hand sevens">
-        {seven.map((c) => (
+        {[...five, ...seven].map((c) => (
           <CardView key={c.id} card={c} {...handProps(c)} />
         ))}
       </div>
 
       {tab === 'exchange' && s.discard.length > 0 && (
         <div className="panel col">
-          <h3>捨て場{tossed.length > 0 && `（あと5音${room(5)}枚・7音${room(7)}枚まで拾える）`}</h3>
+          <div className="label-mark">捨て場{tossed.length > 0 && `（あと5音${room(5)}枚・7音${room(7)}枚まで拾える）`}</div>
           <div className="discard-pile">
             {s.discard.map((d) => (
               <div key={d.card.id}>

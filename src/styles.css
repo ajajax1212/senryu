@@ -241,7 +241,8 @@ input[type='text']:focus {
   gap: 10px;
   flex-wrap: wrap;
   justify-content: center;
-  align-items: flex-start;
+  /* 下端を揃えると、背の高い7音札が上へ伸びて扇のような抑揚が出る */
+  align-items: flex-end;
 }
 
 .panel {
@@ -436,8 +437,8 @@ input[type='text']:focus {
   font-family: var(--font-ui);
   font-size: 11px;
   letter-spacing: 0.14em;
-  color: rgba(253, 248, 238, 0.66);
-  animation: rise 0.5s ease-out 1.3s both;
+  color: rgba(253, 248, 238, 0.8);
+  animation: rise 0.4s ease-out 0.15s both;
 }
 
 /* 動きを抑える設定の人には出さない */
@@ -652,36 +653,129 @@ tr.winner td {
   color: var(--vermilion);
 }
 
-/* ── 残り時間 ── */
+/* ── 残り時間 ──
+   箱で囲った太いバーは重い。髪の毛のような線を画面の縁に走らせ、
+   数字は小さく脇に添えるだけにする */
 .timer {
-  position: relative;
-  height: 24px;
-  border: 1px solid var(--rule);
-  border-radius: 2px;
-  background: var(--paper-sunk);
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   flex-shrink: 0;
+  margin: -6px 0 2px;
+}
+.timer-track {
+  position: relative;
+  flex: 1;
+  height: 3px;
+  background: var(--paper-sunk);
+  border-radius: 2px;
+  overflow: hidden;
 }
 .timer-bar {
   position: absolute;
   inset: 0 auto 0 0;
-  background: rgba(0, 6, 102, 0.16);
+  background: var(--indigo);
+  opacity: 0.75;
   transition: width 0.25s linear;
 }
 .timer-label {
-  position: relative;
-  display: block;
-  text-align: center;
-  line-height: 22px;
   font-family: var(--font-ui);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.14em;
-  color: var(--sumi-soft);
+  letter-spacing: 0.12em;
+  color: var(--sumi-faint);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.timer.urgent .timer-bar { background: rgba(181, 26, 27, 0.3); }
+.timer.urgent .timer-bar { background: var(--vermilion); opacity: 1; }
 .timer.urgent .timer-label { color: var(--vermilion); }
+
+/* ── 余白と抑揚 ──
+   Stitch案から。要素を詰めず、線の装飾で画面に奥行きを作る */
+
+/* 見出しの脇に細い朱の縦線を添える */
+.label-mark {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--sumi-faint);
+}
+.label-mark::before {
+  content: '';
+  width: 2px;
+  height: 13px;
+  background: var(--vermilion);
+  opacity: 0.75;
+}
+
+/* 手番の見出し。中央に据えて、交換回数は下に小さな丸薬で置く */
+.turn-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 0 2px;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--sumi-faint);
+  border: 1px solid var(--rule);
+  border-radius: 99px;
+  padding: 5px 14px;
+  background: rgba(255, 253, 247, 0.6);
+}
+.pill.on { color: var(--indigo); border-color: rgba(0, 6, 102, 0.35); }
+
+/* 小さな操作は幅いっぱいのボタンにしない。中央の小片にする */
+.chip-btn {
+  align-self: center;
+  width: auto;
+  font-size: 12px;
+  padding: 8px 16px;
+  border-radius: 99px;
+  background: rgba(255, 253, 247, 0.7);
+  box-shadow: none;
+}
+
+/* 隅に置く線の飾り。墨で引いた円と、傾いた枠 */
+.accents {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.accents::before {
+  content: '';
+  position: absolute;
+  left: -70px;
+  bottom: 8%;
+  width: 210px;
+  height: 210px;
+  border: 1.5px solid rgba(0, 6, 102, 0.14);
+  border-radius: 50%;
+}
+.accents::after {
+  content: '';
+  position: absolute;
+  right: 4%;
+  top: 12%;
+  width: 96px;
+  height: 96px;
+  border: 1.5px solid rgba(181, 26, 27, 0.16);
+  transform: rotate(18deg);
+}
+#root { position: relative; z-index: 1; }
 
 /* ── タイトル ── */
 .title-block {

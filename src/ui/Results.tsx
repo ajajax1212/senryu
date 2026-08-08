@@ -118,7 +118,7 @@ export function RoundResult({
 
   useEffect(() => {
     if (!revealing) return;
-    const t = setTimeout(() => setRevealing(false), 3400);
+    const t = setTimeout(() => setRevealing(false), 2200);
     return () => clearTimeout(t);
   }, [revealing]);
 
@@ -135,7 +135,7 @@ export function RoundResult({
               <HaikuView haiku={won} stamp="一" />
             </div>
             <div className="reveal-name">{name(r.winnerId!)}</div>
-            <div className="reveal-hint">画面をタップして結果へ</div>
+            <div className="reveal-hint">タップで結果へ</div>
           </div>
         </div>
       )}

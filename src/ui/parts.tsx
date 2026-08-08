@@ -29,7 +29,9 @@ export function Countdown({ seconds, onExpire }: { seconds: number; onExpire: ()
   const ss = String(left % 60).padStart(2, '0');
   return (
     <div className={`timer${left <= 30 ? ' urgent' : ''}`}>
-      <div className="timer-bar" style={{ width: `${(left / seconds) * 100}%` }} />
+      <div className="timer-track">
+        <div className="timer-bar" style={{ width: `${(left / seconds) * 100}%` }} />
+      </div>
       <span className="timer-label">
         残り {mm}:{ss}
       </span>
@@ -107,7 +109,9 @@ export function DeadlineBar({ deadline }: { deadline: number }) {
   const ss = String(left % 60).padStart(2, '0');
   return (
     <div className={`timer${left <= 30 ? ' urgent' : ''}`}>
-      <div className="timer-bar" style={{ width: `${Math.min(100, (left / 300) * 100)}%` }} />
+      <div className="timer-track">
+        <div className="timer-bar" style={{ width: `${Math.min(100, (left / 300) * 100)}%` }} />
+      </div>
       <span className="timer-label">
         残り {mm}:{ss}
       </span>

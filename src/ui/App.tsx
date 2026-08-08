@@ -10,13 +10,16 @@ export function App() {
   // 招待URLで開かれたときは、いきなりオンラインの参加画面に入る
   const [route, setRoute] = useState<Route>(codeFromUrl() ? { kind: 'online' } : { kind: 'title' });
 
+  // 隅に置く線の飾り。どの画面でも背後に敷く
+  const accents = <div className="accents" aria-hidden="true" />;
+
   if (route.kind === 'local') {
-    return <Local mode={route.mode} onBack={() => setRoute({ kind: 'title' })} />;
+    return (<>{accents}<Local mode={route.mode} onBack={() => setRoute({ kind: 'title' })} /></>);
   }
   if (route.kind === 'online') {
-    return <Online onBack={() => setRoute({ kind: 'title' })} />;
+    return (<>{accents}<Online onBack={() => setRoute({ kind: 'title' })} /></>);
   }
-  return <Title onPick={setRoute} />;
+  return (<>{accents}<Title onPick={setRoute} /></>);
 }
 
 function Title({ onPick }: { onPick: (r: Route) => void }) {
