@@ -77,10 +77,10 @@ Unblock-File "C:\Program Files\nodejs\npm.ps1", "C:\Program Files\nodejs\npx.ps1
 ```
 senryu-game/
 ├─ docs/SPEC.md              仕様書
-├─ data/decks/               札データ（合計704枚）
-│   ├─ standard.json         標準 206枚
+├─ data/decks/               札データ（合計833枚）
+│   ├─ standard.json         標準 336枚
 │   ├─ meme.json             ネットミーム・流行語 197枚
-│   └─ spicy.json            下ネタ（R18・デフォルトOFF）301枚
+│   └─ spicy.json            下ネタ（R18・デフォルトOFF）300枚
 ├─ data/cards.csv            上の3つをまとめて編集するためのCSV
 ├─ scripts/validate-cards.mjs  モーラ数・品詞・重複の検証
 ├─ scripts/cards-csv.mjs     CSV ⇔ JSON の往復
