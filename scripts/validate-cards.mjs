@@ -15,6 +15,9 @@ const HIRAGANA = /^[ぁ-ゖー]+$/;
 // 誤検出が多すぎるので入れない（「過去の人」「潮の跡」など）。長いものから順に判定する。
 const TRAILING_PARTICLES = ['には', 'では', 'でも', 'にも', 'より', 'まで', 'から', 'とか', 'ので', 'のに', 'を', 'が', 'は', 'へ'];
 
+// 表記と読みの食い違いを見つけるための、末尾に来がちなかな1文字
+const KANA_PARTICLES = new Set(['で', 'に', 'と', 'も', 'を', 'が', 'は', 'へ', 'の', 'て']);
+
 // 上のルールに引っかかるが名詞として正しい読みの例外。増えたらここに足す。
 const NOUN_EXCEPTIONS = new Set([
   'ひんにゅうは', // 貧乳派
@@ -25,6 +28,18 @@ export function countMora(reading) {
   let n = 0;
   for (const ch of reading) if (!SMALL_KANA.has(ch)) n++;
   return n;
+}
+
+/**
+ * 実際のモーラ数から、その札が入る枠（5音の位置か7音の位置か）を返す。
+ * 1モーラだけ多い札は「字余り」として上の枠に収める。6音を5音の位置に、
+ * 8音を7音の位置に置いても口に出したときのリズムは崩れないため。
+ * 収まらなければ null。
+ */
+export function slotFor(mora) {
+  if (mora === 5 || mora === 6) return 5;
+  if (mora === 7 || mora === 8) return 7;
+  return null;
 }
 
 /** 全デッキを検証する。問題があれば説明の配列を返す */
@@ -53,9 +68,11 @@ for (const file of readdirSync(deckDir).filter((f) => f.endsWith('.json')).sort(
       errors.push(`moraは5か7のみ: ${where}`);
     }
 
+    // mora は「どちらの枠に置く札か」であって、読みの実測値とは限らない。
+    // 字余り（枠+1モーラ）まで許す。それ以上ずれていれば読みか mora のどちらかが誤り
     const actual = countMora(card.reading);
-    if (actual !== card.mora) {
-      errors.push(`モーラ数が不一致: ${where} → 宣言 ${card.mora} / 実際 ${actual}`);
+    if (slotFor(actual) !== card.mora) {
+      errors.push(`モーラ数が枠に合わない: ${where} → 枠 ${card.mora} / 実際 ${actual}`);
     }
 
     // 読みの重複は同一デッキ内だけでなく全デッキ横断で禁止する。
@@ -63,6 +80,14 @@ for (const file of readdirSync(deckDir).filter((f) => f.endsWith('.json')).sort(
     const dupReading = seenReadings.get(card.reading);
     if (dupReading) errors.push(`読みが重複: ${where} と ${dupReading}`);
     seenReadings.set(card.reading, where);
+
+    // 表記の末尾がかなの助詞なのに読みの末尾が違う＝どちらかの打ち間違い。
+    // CSVで表記だけ直して読みを直し忘れると、画面には「〜で」と出るのに
+    // 音数は助詞を数えないまま通ってしまうので機械で拾う
+    const tailKana = [...card.text].pop();
+    if (KANA_PARTICLES.has(tailKana) && [...card.reading].pop() !== tailKana) {
+      errors.push(`表記と読みの末尾が食い違う: ${where} → 表記は「${tailKana}」で終わっている`);
+    }
 
     // 5音札は上の句にも下の句にも置ける必要があるので、助詞で終わってはいけない。
     // 「〜が」「〜を」で終わる札は上の句にしか置けず、順不同という前提が壊れる。
@@ -80,6 +105,7 @@ for (const file of readdirSync(deckDir).filter((f) => f.endsWith('.json')).sort(
     rating: deck.rating,
     '5音': cards.filter((c) => c.mora === 5).length,
     '7音': cards.filter((c) => c.mora === 7).length,
+    字余り: cards.filter((c) => countMora(c.reading) > c.mora).length,
     合計: cards.length,
   });
 }

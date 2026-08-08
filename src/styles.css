@@ -212,10 +212,15 @@ input[type='text']:focus {
 .card.m7 { height: 196px; }
 .card:hover { transform: translateY(-3px); box-shadow: 3px 5px 0 0 rgba(0, 6, 102, 0.18); }
 .card:active { transform: translateY(2px); box-shadow: none; }
+/* 縦書きの1文字が進む量は「字面(=font-size) + 字間(0.08em)」なので font-size の
+   1.08倍。札の内寸をその倍数で割れば、何文字でも必ず収まる大きさが出る。
+   --box は内寸から2px引いた値、--len は文字数（CardView が渡す）。
+   min() があるので短い札はこれまでどおりの大きさのまま */
 .card .text {
+  --box: 122px;
   writing-mode: vertical-rl;
   text-orientation: upright;
-  font-size: 19px;
+  font-size: min(19px, calc(var(--box) / (var(--len, 5) * 1.08)));
   font-weight: 600;
   letter-spacing: 0.08em;
   line-height: 1.1;
@@ -232,7 +237,7 @@ input[type='text']:focus {
   align-self: flex-start;
   margin-top: 1px;
 }
-.card.m7 .text { font-size: 18px; }
+.card.m7 .text { --box: 172px; font-size: min(18px, calc(var(--box) / (var(--len, 7) * 1.08))); }
 .card.selected {
   border-color: var(--vermilion);
   box-shadow: 3px 3px 0 0 rgba(181, 26, 27, 0.3);

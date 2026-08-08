@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { Card, Haiku } from '../engine/types';
 
 /**
@@ -51,8 +51,12 @@ export function CardView({
   const cls = ['card', card.mora === 7 ? 'm7' : '', state ?? '', onClick ? '' : 'static']
     .filter(Boolean)
     .join(' ');
+  // 字余り（6音・8音）の札は文字数が増えるので、既定の大きさのままだと札からはみ出す。
+  // 文字数をCSSに渡して、収まらないときだけ自動で縮めてもらう。閾値を決め打ちすると
+  // 札を足すたびに調整が要るので、長さから計算させる
+  const len = [...card.text].length;
   return (
-    <div className={cls} onClick={onClick}>
+    <div className={cls} onClick={onClick} style={{ '--len': len } as CSSProperties}>
       <div className="text">{card.text}</div>
       <div className="reading">{card.reading}</div>
     </div>

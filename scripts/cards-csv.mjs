@@ -6,16 +6,17 @@
  *
  * CSV を編集するときに気にしなくてよいこと:
  *   - mora（音数）は reading から自動計算して入れ直す。手で直す必要はない
+ *   - 6音は5音の枠、8音は7音の枠に字余りとして収める。振り分けも自動
  *   - id は空のままでよい。取り込み時に空いている番号を振る
  * 気にすること:
  *   - deck は standard / meme / spicy のどれか
  *   - reading はひらがなと長音符だけ
- *   - 5音札は助詞で終わらせない（idiom に TRUE を入れれば免除）
+ *   - 5音の枠に入る札は助詞で終わらせない（idiom に TRUE を入れれば免除）
  */
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { countMora } from './validate-cards.mjs';
+import { countMora, slotFor } from './validate-cards.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const deckDir = join(root, 'data/decks');
@@ -74,8 +75,10 @@ function exportCsv() {
       (order[a.deck] ?? 9) - (order[b.deck] ?? 9) || a.mora - b.mora || a.id.localeCompare(b.id),
   );
   for (const c of all) {
+    // mora 列には読みの実測値を出す。5音の枠に入っている6音の札（字余り）が
+    // 一目で分かるように。取り込み時はどのみち読みから数え直す
     lines.push(
-      [c.deck, c.id, c.mora, c.text, c.reading, c.idiom ? 'TRUE' : '', (c.tags ?? []).join(';')]
+      [c.deck, c.id, countMora(c.reading), c.text, c.reading, c.idiom ? 'TRUE' : '', (c.tags ?? []).join(';')]
         .map(cell)
         .join(','),
     );
@@ -122,10 +125,14 @@ function importCsv() {
       return errors.push(`${line}行目: reading はひらがなと長音符だけにしてください → "${reading}"`);
     }
 
-    // 音数は必ず読みから数え直す。CSV上の値は参考表示でしかない
-    const mora = countMora(reading);
-    if (mora !== 5 && mora !== 7) {
-      return errors.push(`${line}行目: 「${text}」(${reading}) は ${mora}音です。5音か7音にしてください`);
+    // 音数は必ず読みから数え直す。CSV上の値は参考表示でしかない。
+    // 6音は5音の枠へ、8音は7音の枠へ字余りとして収める
+    const actual = countMora(reading);
+    const mora = slotFor(actual);
+    if (mora === null) {
+      return errors.push(
+        `${line}行目: 「${text}」(${reading}) は ${actual}音です。5〜6音か7〜8音にしてください`,
+      );
     }
 
     let id = get('id');
