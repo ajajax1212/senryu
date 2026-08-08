@@ -10,7 +10,9 @@
     "start": "node dist-server/index.js",
     "preview": "npm run build && npm start",
     "test": "vitest run",
-    "validate": "node scripts/validate-cards.mjs"
+    "validate": "node scripts/validate-cards.mjs",
+    "cards:export": "node scripts/cards-csv.mjs export",
+    "cards:import": "node scripts/cards-csv.mjs import && node scripts/validate-cards.mjs"
   },
   "dependencies": {
     "express": "^4.21.2",

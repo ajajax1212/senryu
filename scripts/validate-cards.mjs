@@ -2,7 +2,7 @@
 // 実行: node scripts/validate-cards.mjs
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const deckDir = join(root, 'data/decks');
@@ -27,6 +27,8 @@ export function countMora(reading) {
   return n;
 }
 
+/** 全デッキを検証する。問題があれば説明の配列を返す */
+export function validateAll() {
 const errors = [];
 const seenIds = new Map();
 const seenReadings = new Map();
@@ -82,12 +84,20 @@ for (const file of readdirSync(deckDir).filter((f) => f.endsWith('.json')).sort(
   });
 }
 
-console.table(summary);
-console.log(`総計: ${seenIds.size}枚`);
-
-if (errors.length) {
-  console.error(`\n✗ ${errors.length}件のエラー:`);
-  for (const e of errors) console.error('  - ' + e);
-  process.exit(1);
+  return { errors, summary, total: seenIds.size };
 }
-console.log('✓ 全デッキの検証に成功しました');
+
+// 直接実行されたときだけ結果を表示する。
+// 他のスクリプトから countMora を import しても検証が走らないよう分けてある
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const { errors, summary, total } = validateAll();
+  console.table(summary);
+  console.log(`総計: ${total}枚`);
+
+  if (errors.length) {
+    console.error(`\n✗ ${errors.length}件のエラー:`);
+    for (const e of errors) console.error('  - ' + e);
+    process.exit(1);
+  }
+  console.log('✓ 全デッキの検証に成功しました');
+}
