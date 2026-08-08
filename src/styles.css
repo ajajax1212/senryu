@@ -1,40 +1,41 @@
 /*
- * 「Neo-Wabi-Sabi」— Stitch のモックから構成と美学を取り込んだもの。
- * 素材は外部画像に頼らずCSSで作る。Stitch が吐く画像URLは一時的なもので消えるため。
+ * 「和モダン・かるた風」デザインシステム
+ * 伝統色：生成り、和紙ホワイト、墨色、朱色、松葉色、優しい和紙色
  */
 :root {
-  /* 藍。枠線・札の文字・主要なUI */
-  --indigo: #000666;
-  --indigo-soft: #343d96;
-  /* 朱。判子・勝ち・強調。使いすぎない */
-  --vermilion: #b51a1b;
-  --vermilion-bright: #d93630;
+  /* 伝統色カラーパレット */
+  --bg-base: #f5f3e9;       /* 生成り */
+  --card-bg: #fcfbfa;       /* 和紙風ホワイト */
+  --text-sumi: #1a1a1c;     /* 墨色 */
+  --vermilion: #c8392b;     /* 朱色 */
+  --matsuba: #2d5a27;       /* 松葉色 */
+  --border-washi: #e2ddd0;  /* 優しい和紙色 */
 
-  /* DESIGN.md の値をそのまま使う */
-  --paper: #fbf8ff;
-  --paper-card: #ffffff;
-  --paper-panel: #f5f2fb;
-  --paper-sunk: #e4e1ea;
+  /* エイリアス＆補完色 */
+  --paper: var(--bg-base);
+  --paper-card: var(--card-bg);
+  --paper-panel: #faf8f2;
+  --paper-sunk: #eae5d7;
 
-  /* 墨。真っ黒ではなく乾いた炭の色 */
-  --sumi: #1b1b21;
-  --sumi-soft: #454652;
-  /* 小さい文字も on-surface-variant を使う。DESIGN.md の #767683 は
-     outline（枠線）用のトークンで、文字に使うと 4.3:1 しかなく、
-     墨のにじみの上では 2.9:1 まで落ちて読めなくなる */
-  --sumi-faint: #454652;
-  /* 枠線用。破線のスロットなど */
-  --outline: #767683;
-  --rule: #c6c5d4;
+  --sumi: var(--text-sumi);
+  --sumi-soft: #38373d;
+  --sumi-faint: #636168;
 
-  --gold: #a8842c;
+  --indigo: #2b384a;        /* 藍墨色 */
+  --indigo-soft: #44546a;
+  --vermilion-bright: #df3e2e;
+  --outline: #c8c2b5;
+  --rule: var(--border-washi);
+  --gold: #b58d3d;          /* 落ち着いた金茶色 */
 
-  --font-poem: 'Noto Serif JP', 'Yu Mincho', serif;
-  --font-ui: 'Work Sans', 'Noto Sans JP', sans-serif;
+  /* フォント定義 */
+  --font-poem: 'Shippori Mincho', 'Yu Mincho', serif;
+  --font-ui: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
 
-  /* 物として置かれている感じを出す、ぼかさない落ち影 */
-  --lift: 2px 2px 0 0 rgba(0, 6, 102, 0.16);
-  --lift-hanko: 4px 4px 0 0 rgba(181, 26, 27, 0.32);
+  /* 紙の質感の陰影 */
+  --lift: 0 2px 6px rgba(26, 26, 28, 0.06), 0 1px 2px rgba(26, 26, 28, 0.04);
+  --lift-card: 0 4px 12px rgba(26, 26, 28, 0.08), 0 1px 3px rgba(26, 26, 28, 0.05);
+  --lift-hanko: 0 3px 8px rgba(200, 57, 43, 0.22);
 }
 
 * {
@@ -48,32 +49,27 @@ body {
   font-family: var(--font-poem);
   min-height: 100dvh;
   -webkit-text-size-adjust: 100%;
-  background-color: var(--paper);
+  background-color: var(--bg-base);
   background-attachment: fixed;
-  /*
-   * 墨のにじみ。左下から藍が差し、右上に朱がほのかに滲む。
-   * 本文はすべて和紙の面（.panel / .card / .haiku / .stage）の上に乗せるので、
-   * 地がここまで濃くても文字が沈まない。地の上に直接置く文字は
-   * --ink-on-wash（淡色）を使うこと。
-   */
+  /* 微細な和紙風ドット・ノイズパターン */
   background-image:
-    radial-gradient(ellipse 85% 72% at 2% 116%, rgba(0, 6, 102, 0.22), transparent 62%),
-    radial-gradient(ellipse 68% 55% at 98% -12%, rgba(181, 26, 27, 0.13), transparent 60%),
-    radial-gradient(ellipse 60% 40% at 50% 40%, rgba(0, 6, 102, 0.05), transparent 70%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23f)' opacity='0.05'/%3E%3C/svg%3E");
+    radial-gradient(var(--border-washi) 1px, transparent 0),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23f)' opacity='0.035'/%3E%3C/svg%3E");
+  background-size: 24px 24px, 120px 120px;
 }
 
-/*
- * 地の上に直接置く文字の面。ここに乗せれば本文が読める。
- * 「背景が濃いと読めない」問題は、地を薄くするのではなく
- * 文字が乗る面を用意することで解く。
- */
+/* 縦書きユーティリティクラス */
+.vertical-text {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+}
+
+/* 舞台・ステージ（文字を読みやすくする和纸パネル） */
 .stage {
-  background: rgba(255, 253, 247, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  border-radius: 2px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-washi);
+  border-radius: 4px;
   padding: 16px 18px;
-  backdrop-filter: blur(3px);
   box-shadow: var(--lift);
 }
 
@@ -88,29 +84,34 @@ body {
 }
 
 h1 {
+  font-family: var(--font-poem);
   font-size: 34px;
   font-weight: 700;
   letter-spacing: 0.24em;
   text-align: center;
-  color: var(--indigo);
+  color: var(--sumi);
   margin: 20px 0 4px;
 }
+
 h2 {
+  font-family: var(--font-ui);
   font-size: 22px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--indigo);
+  color: var(--sumi);
 }
+
 h3 {
   font-family: var(--font-ui);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.14em;
   color: var(--sumi-faint);
   text-transform: uppercase;
 }
 
 .sub {
+  font-family: var(--font-ui);
   font-size: 14px;
   line-height: 1.8;
   color: var(--sumi-soft);
@@ -120,48 +121,57 @@ h3 {
 .row { display: flex; gap: 10px; align-items: center; }
 .col { display: flex; flex-direction: column; gap: 12px; }
 
-/* ── 判子ボタン ──
-   木の判子を押す感覚。角丸なし、影はぼかさない、押すと沈む */
+/* ── 和モダンのボタン（和紙札・印章風） ── */
 button {
   font-family: var(--font-ui);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--sumi);
-  background: var(--paper-card);
-  border: 1px solid var(--rule);
-  border-radius: 2px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-washi);
+  border-radius: 4px;
   padding: 13px 18px;
   cursor: pointer;
   box-shadow: var(--lift);
-  transition: transform 0.08s, box-shadow 0.08s, background 0.15s;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
-button:hover:not(:disabled) { background: #fff; }
+button:hover:not(:disabled) {
+  background: #ffffff;
+  border-color: var(--outline);
+  box-shadow: var(--lift-card);
+}
 button:active:not(:disabled) {
-  transform: translateY(2px);
-  box-shadow: none;
+  transform: translateY(1px);
+  box-shadow: var(--lift);
 }
 button:disabled {
-  opacity: 0.42;
+  opacity: 0.45;
   cursor: not-allowed;
   box-shadow: none;
 }
 button.primary {
   background: var(--vermilion);
   border-color: var(--vermilion);
-  color: #fff;
+  color: #ffffff;
   font-size: 16px;
   font-weight: 700;
   padding: 16px;
   box-shadow: var(--lift-hanko);
 }
-button.primary:hover:not(:disabled) { background: var(--vermilion-bright); }
+button.primary:hover:not(:disabled) {
+  background: var(--vermilion-bright);
+  border-color: var(--vermilion-bright);
+}
 button.ghost {
   background: transparent;
   box-shadow: none;
-  border-color: var(--rule);
+  border-color: var(--border-washi);
 }
-button.ghost:hover:not(:disabled) { background: rgba(255, 255, 255, 0.5); }
+button.ghost:hover:not(:disabled) {
+  background: rgba(252, 251, 250, 0.7);
+  border-color: var(--outline);
+}
 button.wide { width: 100%; }
 
 input[type='text'] {
@@ -170,7 +180,6 @@ input[type='text'] {
   color: var(--sumi);
   background: transparent;
   border: none;
-  /* 一本の墨線。囲わない */
   border-bottom: 1.5px solid var(--sumi);
   border-radius: 0;
   padding: 10px 2px;
@@ -181,22 +190,18 @@ input[type='text']:focus {
   border-bottom-color: var(--vermilion);
 }
 
-/* ── 札 ──
-   花札に倣った太い藍の枠。文字は必ず縦書き。
-   upright にしないと「AI絵」「新NISA」のラテン文字が横倒しになる */
-.card {
-  /* 札そのものは横書きのまま。縦書きにするのは中の文字だけ。
-     card 自体を vertical-rl にすると、flex のインライン軸が縦になり
-     本文と読みが上下に積まれて札からはみ出す */
+/* ── 短冊（かるた）カード ── */
+.card, .card-tanzaku {
+  position: relative;
   writing-mode: horizontal-tb;
-  background: var(--paper-card);
-  color: var(--indigo);
-  border: 2px solid var(--indigo);
-  border-radius: 2px;
-  box-shadow: var(--lift);
+  background: var(--card-bg);
+  color: var(--sumi);
+  border: 1px solid var(--border-washi);
+  border-radius: 4px;
+  box-shadow: var(--lift-card);
   width: 62px;
   height: 146px;
-  padding: 9px 5px;
+  padding: 10px 5px;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -206,30 +211,58 @@ input[type='text']:focus {
   cursor: pointer;
   user-select: none;
   flex-shrink: 0;
-  transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.15s ease;
 }
-/* 7音札は縦に長い。音数が一目で分かるように */
-.card.m7 { height: 196px; }
-.card:hover { transform: translateY(-3px); box-shadow: 3px 5px 0 0 rgba(0, 6, 102, 0.18); }
-.card:active { transform: translateY(2px); box-shadow: none; }
-/* 縦書きの1文字が進む量は「字面(=font-size) + 字間(0.08em)」なので font-size の
-   1.08倍。札の内寸をその倍数で割れば、何文字でも必ず収まる大きさが出る。
-   --box は内寸から2px引いた値、--len は文字数（CardView が渡す）。
-   min() があるので短い札はこれまでどおりの大きさのまま */
+
+/* うっすら朱色/松葉色の細い枠線（インセットフレーム） */
+.card::after, .card-tanzaku::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgba(200, 57, 43, 0.35); /* 朱色のインセットフレーム */
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* 7音札は縦に長く、松葉色フレーム */
+.card.m7, .card-tanzaku.m7 {
+  height: 196px;
+}
+.card.m7::after, .card-tanzaku.m7::after {
+  border-color: rgba(45, 90, 39, 0.35); /* 松葉色のインセットフレーム */
+}
+
+/* かるたのゆらぎ（わずかな傾き） */
+.hand .card:nth-child(odd), .discard-pile .card:nth-child(odd) { transform: rotate(-0.8deg); }
+.hand .card:nth-child(even), .discard-pile .card:nth-child(even) { transform: rotate(1deg); }
+.hand .card:nth-child(3n), .discard-pile .card:nth-child(3n) { transform: rotate(-1.2deg); }
+.hand .card:nth-child(5n), .discard-pile .card:nth-child(5n) { transform: rotate(0.6deg); }
+
+.card:hover {
+  transform: translateY(-4px) rotate(0deg) !important;
+  box-shadow: 0 8px 18px rgba(26, 26, 28, 0.12);
+  border-color: var(--outline);
+}
+.card:active {
+  transform: translateY(1px) rotate(0deg) !important;
+  box-shadow: var(--lift);
+}
+
 .card .text {
   --box: 122px;
   writing-mode: vertical-rl;
   text-orientation: upright;
+  font-family: var(--font-poem);
   font-size: min(19px, calc(var(--box) / (var(--len, 5) * 1.08)));
   font-weight: 600;
   letter-spacing: 0.08em;
   line-height: 1.1;
   white-space: nowrap;
 }
-/* 読みは本文の右にふりがなとして細く添える（縦書きのルビは右） */
 .card .reading {
   writing-mode: vertical-rl;
   text-orientation: upright;
+  font-family: var(--font-poem);
   font-size: 9px;
   color: var(--sumi-faint);
   letter-spacing: 0.02em;
@@ -238,31 +271,37 @@ input[type='text']:focus {
   margin-top: 1px;
 }
 .card.m7 .text { --box: 172px; font-size: min(18px, calc(var(--box) / (var(--len, 7) * 1.08))); }
+
 .card.selected {
   border-color: var(--vermilion);
-  box-shadow: 3px 3px 0 0 rgba(181, 26, 27, 0.3);
+  box-shadow: 0 0 0 1.5px var(--vermilion), var(--lift-card);
+  transform: translateY(-6px) rotate(0deg) !important;
 }
+.card.selected::after {
+  border-color: var(--vermilion);
+}
+
 .card.discarding {
   opacity: 0.45;
   border-style: dashed;
   border-color: var(--vermilion);
 }
 .card.static { cursor: default; }
-.card.static:hover { transform: none; box-shadow: var(--lift); }
+.card.static:hover { transform: none !important; box-shadow: var(--lift-card); }
 
 .hand {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
   justify-content: center;
-  /* 下端を揃えると、背の高い7音札が上へ伸びて扇のような抑揚が出る */
   align-items: flex-end;
+  padding: 4px;
 }
 
 .panel {
   background: var(--paper-panel);
-  border: 1px solid var(--rule);
-  border-radius: 2px;
+  border: 1px solid var(--border-washi);
+  border-radius: 4px;
   padding: 16px;
   box-shadow: var(--lift);
 }
@@ -274,6 +313,7 @@ input[type='text']:focus {
   justify-content: center;
   max-height: 260px;
   overflow-y: auto;
+  padding: 4px;
 }
 .discard-pile .owner {
   font-family: var(--font-ui);
@@ -284,60 +324,66 @@ input[type='text']:focus {
   letter-spacing: 0.04em;
 }
 
-/* ── 句の表示 ──
-   外枠は横書きのまま。中の句だけを縦書きにする。
-   縦書きの中で flex を使ってはいけない。vertical-rl ではインライン軸が
-   縦になるため、flex-direction:row が3句を横並びではなく縦に積んでしまう。
-   通常のブロック配置なら、そのまま右→左の3列になる */
+/* ── 川柳（完成句）の表示 ── */
 .haiku {
-  background: var(--paper-card);
+  background: var(--card-bg);
   color: var(--sumi);
-  border: 8px solid var(--indigo);
-  border-radius: 2px;
-  padding: 20px 18px 14px;
-  box-shadow: 5px 5px 0 0 rgba(0, 6, 102, 0.16);
-  position: relative; /* 判子を重ねる基準 */
+  border: 2px solid var(--sumi);
+  border-radius: 4px;
+  padding: 22px 20px 16px;
+  box-shadow: var(--lift-card);
+  position: relative;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  /* 縦積みの列に直接置かれたとき、flex項目として幅いっぱいに
-     引き伸ばされてしまうのを防ぐ。札は中身なりの幅で中央に置く */
+  gap: 14px;
   align-self: center;
-  transition: transform 0.15s, border-color 0.12s;
+  transition: transform 0.15s ease, border-color 0.12s ease, box-shadow 0.15s ease;
 }
-/* 並べる場では上端を揃える */
+
+/* 句の短冊インセットフレーム */
+.haiku::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(200, 57, 43, 0.3);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
 .board > .haiku { align-self: flex-start; }
+.board > .haiku:nth-child(odd) { transform: rotate(-0.6deg); }
+.board > .haiku:nth-child(even) { transform: rotate(0.8deg); }
+
 .haiku.pickable { cursor: pointer; }
 .haiku.pickable:hover {
-  transform: translateY(-4px);
+  transform: translateY(-4px) rotate(0deg) !important;
   border-color: var(--vermilion);
+  box-shadow: 0 10px 24px rgba(26, 26, 28, 0.14);
 }
 
 .haiku-body {
   writing-mode: vertical-rl;
   text-orientation: upright;
+  font-family: var(--font-poem);
   font-size: 26px;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   min-height: 300px;
 }
 .haiku-body > div { white-space: nowrap; }
-/* 縦書きでは block 方向が右→左なので、列の間隔は margin-block-end */
 .haiku-body > div + div { margin-block-end: 0; }
 .haiku-body > div:not(:last-child) { margin-block-end: 22px; }
 
-/* 作者名は横書き */
 .haiku .author {
   font-family: var(--font-ui);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.1em;
-  color: var(--sumi-faint);
+  color: var(--sumi-soft);
   white-space: nowrap;
 }
 
-/* 句を並べる場。最初から横並びで見比べられるようにする */
 .board {
   display: flex;
   flex-wrap: wrap;
@@ -346,50 +392,51 @@ input[type='text']:focus {
   align-items: flex-start;
 }
 
-/* 選ばれた句は大きく、藍を太くして金の縁を添える */
+/* 選ばれた最優秀句（金の縁と朱の強調） */
 .haiku.won {
-  border-width: 12px;
-  border-color: var(--indigo);
+  border-width: 2.5px;
+  border-color: var(--vermilion);
   outline: 2px solid var(--gold);
-  outline-offset: 5px;
-  box-shadow: 7px 7px 0 0 rgba(0, 6, 102, 0.22);
+  outline-offset: 4px;
+  box-shadow: 0 12px 28px rgba(200, 57, 43, 0.16);
+  transform: rotate(0deg) !important;
+}
+.haiku.won::after {
+  border-color: var(--gold);
 }
 .haiku.won .haiku-body { font-size: 32px; min-height: 340px; }
 
-/* 選ばれなかった句は小さく引いて、勝ち句を目立たせる */
 .haiku.lost {
-  border-width: 5px;
-  opacity: 0.62;
-  filter: saturate(0.75);
+  border-width: 1px;
+  border-color: var(--border-washi);
+  opacity: 0.7;
 }
 .haiku.lost .haiku-body { font-size: 19px; min-height: 210px; }
 .haiku.lost .author { font-size: 10px; }
 
-/* 判子。押し付けたように傾けて重ねる。
-   縦書きは左下が書き終わりなので、落款もそこに置く。
-   右下だと作者名と重なる */
+/* 判子・落款（朱印） */
 .hanko {
   position: absolute;
-  left: -24px;
-  bottom: -20px;
-  width: 74px;
-  height: 74px;
+  left: -20px;
+  bottom: -16px;
+  width: 68px;
+  height: 68px;
   display: grid;
   place-items: center;
-  border: 4px solid var(--vermilion);
-  border-radius: 3px;
+  border: 3px solid var(--vermilion);
+  border-radius: 4px;
   color: var(--vermilion);
-  background: rgba(255, 253, 247, 0.92);
+  background: rgba(252, 251, 250, 0.95);
   font-family: var(--font-poem);
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  transform: rotate(-13deg);
+  transform: rotate(-11deg);
   pointer-events: none;
+  box-shadow: var(--lift-hanko);
 }
 
-/* ── 選出の演出 ──
-   選ばれた瞬間、画面中央で句を大きく見せてから結果に落とす */
+/* 選出の演出 */
 .reveal {
   position: fixed;
   inset: 0;
@@ -397,7 +444,7 @@ input[type='text']:focus {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgba(18, 15, 13, 0.74);
+  background: rgba(26, 26, 28, 0.82);
   backdrop-filter: blur(4px);
   animation: wash-in 0.45s ease-out both;
   cursor: pointer;
@@ -416,33 +463,34 @@ input[type='text']:focus {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .reveal .haiku {
-  border-width: 12px;
-  box-shadow: 10px 10px 0 0 rgba(0, 0, 0, 0.35);
+  border-width: 3px;
+  border-color: var(--vermilion);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
 }
 .reveal .haiku-body { font-size: 38px; min-height: 380px; }
 
-/* 判子が遅れて押される */
 .reveal .hanko {
-  width: 96px;
-  height: 96px;
-  font-size: 34px;
-  left: -30px;
-  bottom: -26px;
+  width: 90px;
+  height: 90px;
+  font-size: 32px;
+  left: -26px;
+  bottom: -22px;
   animation: stamp 0.42s cubic-bezier(0.3, 1.6, 0.5, 1) 0.62s both;
 }
 @keyframes stamp {
-  from { opacity: 0; transform: rotate(-13deg) scale(2.6); }
-  60% { opacity: 1; transform: rotate(-13deg) scale(0.92); }
-  to { opacity: 1; transform: rotate(-13deg) scale(1); }
+  from { opacity: 0; transform: rotate(-11deg) scale(2.6); }
+  60% { opacity: 1; transform: rotate(-11deg) scale(0.92); }
+  to { opacity: 1; transform: rotate(-11deg) scale(1); }
 }
 
 .reveal-name {
   margin-top: 22px;
   text-align: center;
+  font-family: var(--font-poem);
   font-size: 22px;
   font-weight: 700;
   letter-spacing: 0.16em;
-  color: #fdf8ee;
+  color: var(--bg-base);
   animation: rise 0.5s ease-out 0.9s both;
 }
 .reveal-hint {
@@ -451,24 +499,17 @@ input[type='text']:focus {
   font-family: var(--font-ui);
   font-size: 11px;
   letter-spacing: 0.14em;
-  color: rgba(253, 248, 238, 0.8);
+  color: rgba(245, 243, 233, 0.8);
   animation: rise 0.4s ease-out 0.15s both;
 }
 
-/* 動きを抑える設定の人には出さない */
 @media (prefers-reduced-motion: reduce) {
-  .reveal,
-  .reveal-inner,
-  .reveal .hanko,
-  .reveal-name,
-  .reveal-hint {
+  .reveal, .reveal-inner, .reveal .hanko, .reveal-name, .reveal-hint {
     animation: none;
   }
 }
 
-/* ── 句を組むスロット ──
-   縦書きに合わせて右から左に読む。row-reverse で見た目だけ反転させ、
-   DOMは上句→中句→下句の論理順のまま保つ */
+/* ── 作句スロット ── */
 .slots {
   display: flex;
   flex-direction: row-reverse;
@@ -483,38 +524,51 @@ input[type='text']:focus {
   align-items: center;
   gap: 8px;
 }
-/* 五 / 七 / 五 のラベル。薄い墨で大きく */
 .slot-mora {
+  font-family: var(--font-poem);
   font-size: 26px;
   font-weight: 700;
-  color: var(--indigo);
-  opacity: 0.22;
+  color: var(--matsuba);
+  opacity: 0.45;
   line-height: 1;
 }
 .slot {
+  position: relative;
   writing-mode: vertical-rl;
   text-orientation: upright;
   width: 62px;
   height: 146px;
-  border: 2px dashed var(--outline);
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.35);
+  border: 1.5px dashed var(--border-washi);
+  border-radius: 4px;
+  background: rgba(252, 251, 250, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  font-family: var(--font-poem);
   font-size: 19px;
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: var(--indigo);
+  color: var(--sumi);
   white-space: nowrap;
-  transition: border-color 0.12s, background 0.12s;
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
 }
 .slot.tall { height: 196px; }
 .slot.filled {
-  background: var(--paper-card);
-  border: 2px solid var(--indigo);
-  box-shadow: var(--lift);
+  background: var(--card-bg);
+  border: 1px solid var(--border-washi);
+  box-shadow: var(--lift-card);
+}
+.slot.filled::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgba(200, 57, 43, 0.35);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.slot.tall.filled::after {
+  border-color: rgba(45, 90, 39, 0.35);
 }
 .slot .hint {
   writing-mode: horizontal-tb;
@@ -526,27 +580,28 @@ input[type='text']:focus {
   line-height: 1.5;
 }
 
-/* ── 作句／交換の切り替え ── */
+/* ── 作句／交換 タブ ── */
 .tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1.5px solid var(--border-washi);
 }
 .tabs button {
   background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-bottom: 2.5px solid transparent;
   border-radius: 0;
   box-shadow: none;
   padding: 11px;
   color: var(--sumi-faint);
 }
-.tabs button:hover { background: rgba(255, 255, 255, 0.4); }
+.tabs button:hover { background: rgba(252, 251, 250, 0.6); }
 .tabs button:active { transform: none; }
 .tabs button.on {
-  color: var(--indigo);
+  color: var(--vermilion);
   border-bottom-color: var(--vermilion);
+  font-weight: 700;
 }
 
 /* ── 採点 ── */
@@ -564,7 +619,6 @@ input[type='range'] {
   accent-color: var(--vermilion);
   height: 34px;
 }
-/* 目盛り。スライダーの下に薄く添えるだけで、押せる要素にはしない */
 .score-scale {
   display: flex;
   justify-content: space-between;
@@ -574,7 +628,6 @@ input[type='range'] {
   color: var(--sumi-faint);
   padding: 0 2px;
 }
-/* つまみを大きめにして掴みやすくする */
 input[type='range'] {
   appearance: none;
   background: transparent;
@@ -591,8 +644,8 @@ input[type='range']::-webkit-slider-thumb {
   margin-top: -11px;
   border-radius: 50%;
   background: var(--vermilion);
-  border: 3px solid var(--paper-card);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  border: 3px solid var(--card-bg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   cursor: grab;
 }
 input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; }
@@ -602,18 +655,16 @@ table {
   width: 100%;
   border-collapse: collapse;
   font-size: 15px;
+  font-family: var(--font-ui);
 }
-th,
-td {
-  padding: 11px 8px;
+th, td {
+  padding: 12px 10px;
   text-align: left;
-  /* 巻物に引いた手書きの罫のような破線 */
-  border-bottom: 1px dashed var(--rule);
+  border-bottom: 1px dashed var(--border-washi);
 }
 th {
-  font-family: var(--font-ui);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.12em;
   color: var(--sumi-faint);
   text-transform: uppercase;
@@ -631,15 +682,15 @@ tr.winner td {
   display: inline-block;
   font-family: var(--font-ui);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   padding: 4px 10px;
-  border-radius: 2px;
-  border: 1px solid var(--rule);
+  border-radius: 3px;
+  border: 1px solid var(--border-washi);
   color: var(--sumi-faint);
   letter-spacing: 0.1em;
   white-space: nowrap;
 }
-.badge.on { border-color: var(--indigo); color: var(--indigo); }
+.badge.on { border-color: var(--matsuba); color: var(--matsuba); }
 .badge.r18 { border-color: var(--vermilion); color: var(--vermilion); }
 
 .deck-option {
@@ -647,43 +698,42 @@ tr.winner td {
   align-items: center;
   gap: 12px;
   padding: 13px;
-  border: 1px solid var(--rule);
-  border-radius: 2px;
-  background: var(--paper-card);
+  border: 1px solid var(--border-washi);
+  border-radius: 4px;
+  background: var(--card-bg);
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
+  transition: border-color 0.12s, background-color 0.12s;
 }
 .deck-option.on {
-  border-color: var(--indigo);
-  background: #fff;
+  border-color: var(--vermilion);
+  background: #ffffff;
 }
 .deck-option.locked { opacity: 0.72; cursor: default; }
 .deck-option .check {
   width: 21px;
   height: 21px;
-  border-radius: 2px;
-  border: 1px solid var(--rule);
+  border-radius: 3px;
+  border: 1px solid var(--border-washi);
   display: grid;
   place-items: center;
   flex-shrink: 0;
   font-size: 12px;
-  background: #fff;
+  background: #ffffff;
 }
 .deck-option.on .check {
-  background: var(--indigo);
-  border-color: var(--indigo);
-  color: #fff;
+  background: var(--vermilion);
+  border-color: var(--vermilion);
+  color: #ffffff;
 }
-/* 名前と枚数を1行に。入りきらなければ折り返して従来どおり2行になる */
 .opt-line {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  font-family: var(--font-ui);
 }
 .opt-count { margin-left: auto; white-space: nowrap; }
 
-/* 参加者。狭い画面では1列 */
 .player-list {
   display: flex;
   flex-direction: column;
@@ -692,8 +742,8 @@ tr.winner td {
 
 .invite {
   background: var(--paper-sunk);
-  border: 1px solid var(--rule);
-  border-radius: 2px;
+  border: 1px solid var(--border-washi);
+  border-radius: 4px;
   padding: 11px;
   font-family: ui-monospace, monospace;
   font-size: 12px;
@@ -701,16 +751,15 @@ tr.winner td {
 }
 
 .error {
-  background: rgba(181, 26, 27, 0.1);
+  background: rgba(200, 57, 43, 0.08);
   border-left: 3px solid var(--vermilion);
   padding: 10px 12px;
   font-size: 13px;
   color: var(--vermilion);
+  font-family: var(--font-ui);
 }
 
-/* ── 残り時間 ──
-   箱で囲った太いバーは重い。髪の毛のような線を画面の縁に走らせ、
-   数字は小さく脇に添えるだけにする */
+/* ── 残り時間 ── */
 .timer {
   display: flex;
   align-items: center;
@@ -721,7 +770,7 @@ tr.winner td {
 .timer-track {
   position: relative;
   flex: 1;
-  height: 3px;
+  height: 4px;
   background: var(--paper-sunk);
   border-radius: 2px;
   overflow: hidden;
@@ -729,14 +778,14 @@ tr.winner td {
 .timer-bar {
   position: absolute;
   inset: 0 auto 0 0;
-  background: var(--indigo);
-  opacity: 0.75;
+  background: var(--matsuba);
+  opacity: 0.85;
   transition: width 0.25s linear;
 }
 .timer-label {
   font-family: var(--font-ui);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.12em;
   color: var(--sumi-faint);
   font-variant-numeric: tabular-nums;
@@ -745,29 +794,24 @@ tr.winner td {
 .timer.urgent .timer-bar { background: var(--vermilion); opacity: 1; }
 .timer.urgent .timer-label { color: var(--vermilion); }
 
-/* ── 余白と抑揚 ──
-   Stitch案から。要素を詰めず、線の装飾で画面に奥行きを作る */
-
-/* 見出しの脇に細い朱の縦線を添える */
+/* 見出しの朱のアクセント線 */
 .label-mark {
   display: flex;
   align-items: center;
   gap: 9px;
   font-family: var(--font-ui);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.16em;
   color: var(--sumi-faint);
 }
 .label-mark::before {
   content: '';
-  width: 2px;
+  width: 3px;
   height: 13px;
   background: var(--vermilion);
-  opacity: 0.75;
 }
 
-/* 手番の見出し。中央に据えて、交換回数は下に小さな丸薬で置く */
 .turn-head {
   display: flex;
   flex-direction: column;
@@ -781,28 +825,27 @@ tr.winner td {
   gap: 6px;
   font-family: var(--font-ui);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.12em;
   color: var(--sumi-faint);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--border-washi);
   border-radius: 99px;
   padding: 5px 14px;
-  background: rgba(255, 253, 247, 0.6);
+  background: rgba(252, 251, 250, 0.7);
 }
-.pill.on { color: var(--indigo); border-color: rgba(0, 6, 102, 0.35); }
+.pill.on { color: var(--matsuba); border-color: rgba(45, 90, 39, 0.4); }
 
-/* 小さな操作は幅いっぱいのボタンにしない。中央の小片にする */
 .chip-btn {
   align-self: center;
   width: auto;
   font-size: 12px;
   padding: 8px 16px;
   border-radius: 99px;
-  background: rgba(255, 253, 247, 0.7);
+  background: rgba(252, 251, 250, 0.8);
   box-shadow: none;
 }
 
-/* 隅に置く線の飾り。墨で引いた円と、傾いた枠 */
+/* 墨のアクセント */
 .accents {
   position: fixed;
   inset: 0;
@@ -817,7 +860,7 @@ tr.winner td {
   bottom: 8%;
   width: 210px;
   height: 210px;
-  border: 1.5px solid rgba(0, 6, 102, 0.14);
+  border: 1px dashed rgba(26, 26, 28, 0.08);
   border-radius: 50%;
 }
 .accents::after {
@@ -827,7 +870,7 @@ tr.winner td {
   top: 12%;
   width: 96px;
   height: 96px;
-  border: 1.5px solid rgba(181, 26, 27, 0.16);
+  border: 1px solid rgba(200, 57, 43, 0.12);
   transform: rotate(18deg);
 }
 #root { position: relative; z-index: 1; }
@@ -840,29 +883,36 @@ tr.winner td {
   gap: 14px;
   padding: 12px 0 4px;
 }
-/* 題字。札と同じ和紙と藍の枠に収める */
 .title-mark {
   writing-mode: vertical-rl;
   text-orientation: upright;
+  font-family: var(--font-poem);
   font-size: 42px;
   font-weight: 700;
   letter-spacing: 0.28em;
-  color: var(--indigo);
-  background: var(--paper-card);
-  border: 3px solid var(--indigo);
-  border-radius: 2px;
+  color: var(--sumi);
+  background: var(--card-bg);
+  border: 2px solid var(--sumi);
+  border-radius: 4px;
   padding: 26px 20px;
-  box-shadow: 5px 5px 0 0 rgba(0, 6, 102, 0.16);
+  box-shadow: var(--lift-card);
+  position: relative;
+}
+.title-mark::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(200, 57, 43, 0.4);
+  border-radius: 2px;
+  pointer-events: none;
 }
 
-/* ボタンを画面幅いっぱいに伸ばすと間延びするので、行動列に上限を設ける */
 .title-actions {
   width: 100%;
   max-width: 420px;
   margin: 0 auto;
 }
 
-/* 見出しを兼ねた区切り線。巻物の罫のような破線を左右に伸ばす */
 .divider {
   display: flex;
   align-items: center;
@@ -870,7 +920,7 @@ tr.winner td {
   margin-top: 12px;
   font-family: var(--font-ui);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.14em;
   color: var(--sumi-faint);
 }
@@ -878,12 +928,10 @@ tr.winner td {
 .divider::after {
   content: '';
   flex: 1;
-  border-top: 1px dashed var(--rule);
+  border-top: 1px dashed var(--border-washi);
 }
 
-/* ── 役割の告知 ──
-   ラウンドの頭に「自分は何をする人か」を画面中央で見せる。
-   見出しの一行だと読み飛ばされるので、いったん進行を止めて知らせる */
+/* ── 役割告知 ── */
 .announce {
   position: fixed;
   inset: 0;
@@ -891,41 +939,51 @@ tr.winner td {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgba(18, 15, 13, 0.72);
+  background: rgba(26, 26, 28, 0.78);
   backdrop-filter: blur(4px);
   cursor: pointer;
   animation: wash-in 0.3s ease-out both;
 }
 .announce-card {
-  background: var(--paper-card);
-  border: 10px solid var(--indigo);
-  border-radius: 2px;
-  box-shadow: 10px 10px 0 0 rgba(0, 0, 0, 0.3);
+  position: relative;
+  background: var(--card-bg);
+  border: 2px solid var(--sumi);
+  border-radius: 4px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
   padding: 40px 52px 30px;
   text-align: center;
   max-width: 640px;
   animation: rise 0.5s cubic-bezier(0.2, 1.3, 0.4, 1) both;
 }
+.announce-card::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(200, 57, 43, 0.35);
+  pointer-events: none;
+}
 .announce-round {
   font-family: var(--font-ui);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.28em;
   color: var(--sumi-faint);
 }
 .announce-title {
   margin-top: 14px;
+  font-family: var(--font-poem);
   font-size: 44px;
   font-weight: 700;
   letter-spacing: 0.16em;
   line-height: 1.3;
-  color: var(--indigo);
+  color: var(--vermilion);
 }
 .announce-note {
   margin-top: 16px;
   font-size: 16px;
   line-height: 1.9;
   color: var(--sumi-soft);
+  font-family: var(--font-ui);
 }
 .announce-hint {
   margin-top: 22px;
@@ -935,11 +993,10 @@ tr.winner td {
   color: var(--sumi-faint);
 }
 @media (prefers-reduced-motion: reduce) {
-  .announce,
-  .announce-card { animation: none; }
+  .announce, .announce-card { animation: none; }
 }
 
-/* ── 引き継ぎ（1台をまわす版） ── */
+/* ── 引き継ぎ画面 ── */
 .handoff {
   flex: 1;
   display: flex;
@@ -950,42 +1007,37 @@ tr.winner td {
   text-align: center;
 }
 .handoff .name {
+  font-family: var(--font-poem);
   font-size: 40px;
   font-weight: 700;
   letter-spacing: 0.18em;
-  color: var(--indigo);
+  color: var(--sumi);
 }
 
-/* 作句画面。狭い画面では縦一列のまま */
 .turn-grid {
   display: flex;
   flex-direction: column;
   gap: 18px;
   flex: 1;
 }
-.turn-stage,
-.turn-side {
+.turn-stage, .turn-side {
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
-/* ロビー・設定画面。狭い画面では DOM の順に縦一列 */
 .lobby-grid {
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
-/* 部屋コードは題字ではないので、見出しほど場所を取らせない */
 .lobby-code {
+  font-family: var(--font-poem);
   font-size: 30px;
   letter-spacing: 0.16em;
   margin: 4px 0 0;
 }
 
-/*
- * ここから先はPC。基本はPCブラウザで遊ぶので、横幅を使って
- * 「組む場」と「手札」を左右に分け、文字も一回り大きくする。
- */
+/* レスポンシブ (PC等) */
 @media (min-width: 900px) {
   #root {
     max-width: 1080px;
@@ -1007,7 +1059,6 @@ tr.winner td {
   .invite { font-size: 14px; }
   .timer-label { font-size: 13px; }
 
-  /* 左に組む場、右に手札。札を選んでも句が視界から外れない */
   .turn-grid {
     display: grid;
     grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
@@ -1020,18 +1071,11 @@ tr.winner td {
     gap: 18px;
   }
 
-  /*
-   * 「誰と遊ぶか」と「何で遊ぶか」を横に並べ、開始ボタンまで1画面に収める。
-   * 縦に積むと選択肢を見るだけでスクロールが要る。
-   * 高さの違う枠を左右に置くので、行の高さは背の高いほうに揃う。
-   * 札の選択は一番背が高いので、2行ぶんをまたがせて縦の無駄を消す。
-   */
   .lobby-grid {
     display: grid;
     gap: 20px;
     align-items: start;
   }
-  /* 背の高い枠どうしを同じ行に置くと、行の高さの無駄が一番小さくなる */
   .lb-online {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
@@ -1050,23 +1094,18 @@ tr.winner td {
   .lb-decks { grid-area: decks; }
 
   .lobby-code { font-size: 32px; margin: 0; }
-  /* 8人まで入るので横に流す。縦に伸ばすと開始ボタンが画面外へ出る。
-     枠が狭いときに2列へ押し込むと名前が折り返してかえって背が伸びるので、
-     幅が足りるときだけ2列になるようにする */
   .player-list {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 10px 16px;
   }
-  /* 選択肢は数が多いので、1つあたりの高さを詰める */
   .lobby-grid .deck-option { padding: 10px 12px; gap: 10px; }
   .lobby-grid .deck-option .sub { font-size: 13px; line-height: 1.5; }
   .lobby-grid .panel { padding: 14px; }
   .lobby-grid .panel.col { gap: 10px; }
 
-  /* 札と枠を一回り大きくする。--box は札の内寸−2px（文字の自動縮小に使う） */
-  .card { width: 76px; height: 178px; padding: 11px 6px; }
-  .card.m7 { height: 238px; }
+  .card, .card-tanzaku { width: 76px; height: 178px; padding: 11px 6px; }
+  .card.m7, .card-tanzaku.m7 { height: 238px; }
   .card .text { --box: 154px; font-size: min(23px, calc(var(--box) / (var(--len, 5) * 1.08))); }
   .card.m7 .text { --box: 214px; font-size: min(22px, calc(var(--box) / (var(--len, 7) * 1.08))); }
   .card .reading { font-size: 11px; }
@@ -1092,9 +1131,7 @@ tr.winner td {
   .handoff .name { font-size: 52px; }
 }
 
-/* 3列に開けるだけの横幅があるロビーは、ここで一段縮む */
 @media (min-width: 1000px) {
-  /* 3列に開く。背の高い「使う札」を2行またがせると縦が一番縮む */
   .lb-online {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-areas:
@@ -1107,7 +1144,6 @@ tr.winner td {
   }
 }
 
-/* 縦にも余裕がある大きな画面では、句をもう一段大きく見せる */
 @media (min-width: 1280px) {
   #root { max-width: 1200px; }
   .turn-grid { grid-template-columns: minmax(0, 480px) minmax(0, 1fr); }
