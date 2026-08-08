@@ -133,6 +133,12 @@ export function useRoom() {
     if (!res.ok) setError(res.error ?? '開始できませんでした');
   }, [emit, code]);
 
+  /** 総合結果からロビーへ戻る。モードや札を変えてもう一戦するため */
+  const toLobby = useCallback(async () => {
+    const res = await emit('host:toLobby', { code });
+    if (!res.ok) setError(res.error ?? '戻れませんでした');
+  }, [emit, code]);
+
   const send = useCallback(
     async (action: Action) => {
       const res = await emit('game:action', { code, action });
@@ -141,5 +147,5 @@ export function useRoom() {
     [emit, code],
   );
 
-  return { state, me, code, error, connected, create, join, rejoin, configure, startGame, send, setError };
+  return { state, me, code, error, connected, create, join, rejoin, configure, startGame, toLobby, send, setError };
 }

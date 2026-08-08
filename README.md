@@ -42,7 +42,7 @@ npm.cmd start --prefix senryu-game
 | `npm.cmd run build` | クライアントとサーバーをビルド |
 | `npm.cmd run dev` | クライアントだけの開発サーバー。1台版の確認用 |
 | `npm.cmd run dev:server` | サーバーだけを watch 起動 |
-| `npm.cmd test` | エンジンと札データのテスト（47件） |
+| `npm.cmd test` | エンジンと札データのテスト（46件） |
 | `npm.cmd run validate` | 札データの検証 |
 
 ## デプロイ

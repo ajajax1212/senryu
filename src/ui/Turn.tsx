@@ -106,86 +106,94 @@ export function Turn({
         </button>
       </div>
 
-      {tab === 'compose' ? (
-        <>
-          {/* 縦書きなので右から左に読む。表示順の反転は CSS 側（row-reverse）で行う */}
-          <div className="slots">
-            <Slot mora={5} hint="上の句" card={upper} onClear={() => setDraft({ ...draft, upperId: undefined })} />
-            <Slot mora={7} hint="中の句" card={middle} onClear={() => setDraft({ ...draft, middleId: undefined })} />
-            <Slot mora={5} hint="下の句" card={lower} onClear={() => setDraft({ ...draft, lowerId: undefined })} />
-          </div>
-          <button
-            className="ghost chip-btn"
-            disabled={!upper || !lower}
-            onClick={() => setDraft({ ...draft, upperId: draft.lowerId, lowerId: draft.upperId })}
-          >
-            ↕ 上句と下句を入れ替える
-          </button>
-        </>
-      ) : (
-        <p className="sub">
-          いらない札をタップして交換する。捨てた札は全員に公開され、他の人が拾えます。
-        </p>
-      )}
-
-      <div className="label-mark">手札</div>
-      {/* 5音と7音を1行に混ぜ、下端を揃える。背の差がそのまま扇の抑揚になる */}
-      <div className="hand">
-        {[...five, ...seven].map((c) => (
-          <CardView key={c.id} card={c} {...handProps(c)} />
-        ))}
-      </div>
-
-      {tab === 'exchange' && s.discard.length > 0 && (
-        <div className="panel col">
-          <div className="label-mark">捨て場{tossed.length > 0 && `（あと5音${room(5)}枚・7音${room(7)}枚まで拾える）`}</div>
-          <div className="discard-pile">
-            {s.discard.map((d) => (
-              <div key={d.card.id}>
-                <CardView
-                  card={d.card}
-                  state={claiming.includes(d.card.id) ? 'selected' : undefined}
-                  onClick={() => {
-                    if (claiming.includes(d.card.id)) {
-                      setClaiming(claiming.filter((id) => id !== d.card.id));
-                    } else if (room(d.card.mora) > 0) {
-                      setClaiming([...claiming, d.card.id]);
-                    }
-                  }}
-                />
-                <div className="owner">{playerById(s, d.discardedBy)?.name} が捨てた</div>
+      {/* 広い画面では「組む場」と「手札」を左右に並べる。
+          縦一列だと札を選ぶたびに句のほうが画面外へ出てしまうため */}
+      <div className="turn-grid">
+        <div className="turn-stage">
+          {tab === 'compose' ? (
+            <>
+              {/* 縦書きなので右から左に読む。表示順の反転は CSS 側（row-reverse）で行う */}
+              <div className="slots">
+                <Slot mora={5} hint="上の句" card={upper} onClear={() => setDraft({ ...draft, upperId: undefined })} />
+                <Slot mora={7} hint="中の句" card={middle} onClear={() => setDraft({ ...draft, middleId: undefined })} />
+                <Slot mora={5} hint="下の句" card={lower} onClear={() => setDraft({ ...draft, lowerId: undefined })} />
               </div>
+              <button
+                className="ghost chip-btn"
+                disabled={!upper || !lower}
+                onClick={() => setDraft({ ...draft, upperId: draft.lowerId, lowerId: draft.upperId })}
+              >
+                ↕ 上句と下句を入れ替える
+              </button>
+            </>
+          ) : (
+            <p className="sub center">
+              いらない札をタップして交換する。捨てた札は全員に公開され、他の人が拾えます。
+            </p>
+          )}
+
+          <div className="grow" />
+
+          {tab === 'exchange' ? (
+            <button className="primary wide" disabled={tossing.length === 0 || left <= 0} onClick={commitExchange}>
+              {tossing.length}枚を交換する
+              {claimed.length > 0 && `（うち${claimed.length}枚は捨て場から）`}
+            </button>
+          ) : (
+            <button
+              className="primary wide"
+              disabled={!upper || !middle || !lower}
+              onClick={() =>
+                dispatch({
+                  type: 'SUBMIT',
+                  playerId: me,
+                  upperId: upper!.id,
+                  middleId: middle!.id,
+                  lowerId: lower!.id,
+                })
+              }
+            >
+              この句で提出する
+            </button>
+          )}
+
+          {s.mode === 'dokudan' && <p className="sub center">親（{activePlayer(s).name}）が選びます</p>}
+        </div>
+
+        <div className="turn-side">
+          <div className="label-mark">手札</div>
+          {/* 5音と7音を1行に混ぜ、下端を揃える。背の差がそのまま扇の抑揚になる */}
+          <div className="hand">
+            {[...five, ...seven].map((c) => (
+              <CardView key={c.id} card={c} {...handProps(c)} />
             ))}
           </div>
+
+          {tab === 'exchange' && s.discard.length > 0 && (
+            <div className="panel col">
+              <div className="label-mark">捨て場{tossed.length > 0 && `（あと5音${room(5)}枚・7音${room(7)}枚まで拾える）`}</div>
+              <div className="discard-pile">
+                {s.discard.map((d) => (
+                  <div key={d.card.id}>
+                    <CardView
+                      card={d.card}
+                      state={claiming.includes(d.card.id) ? 'selected' : undefined}
+                      onClick={() => {
+                        if (claiming.includes(d.card.id)) {
+                          setClaiming(claiming.filter((id) => id !== d.card.id));
+                        } else if (room(d.card.mora) > 0) {
+                          setClaiming([...claiming, d.card.id]);
+                        }
+                      }}
+                    />
+                    <div className="owner">{playerById(s, d.discardedBy)?.name} が捨てた</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      )}
-
-      <div className="grow" />
-
-      {tab === 'exchange' ? (
-        <button className="primary wide" disabled={tossing.length === 0 || left <= 0} onClick={commitExchange}>
-          {tossing.length}枚を交換する
-          {claimed.length > 0 && `（うち${claimed.length}枚は捨て場から）`}
-        </button>
-      ) : (
-        <button
-          className="primary wide"
-          disabled={!upper || !middle || !lower}
-          onClick={() =>
-            dispatch({
-              type: 'SUBMIT',
-              playerId: me,
-              upperId: upper!.id,
-              middleId: middle!.id,
-              lowerId: lower!.id,
-            })
-          }
-        >
-          この句で提出する
-        </button>
-      )}
-
-      {s.mode === 'dokudan' && <p className="sub center">親（{activePlayer(s).name}）が選びます</p>}
+      </div>
     </>
   );
 }
@@ -196,13 +204,21 @@ export function Turn({
  */
 function Waiting({ s, me }: { s: GameState; me: string }) {
   const mine = s.submissions.find((h) => h.authorId === me);
-  const isHost = s.mode === 'dokudan' && me === activePlayer(s).id;
+  const author = activePlayer(s);
+  // 親も審査員も句を出さない。ここに来た理由が「提出したから」とは限らないので、
+  // 待っている理由をそのまま見出しにする
+  const role =
+    s.mode === 'dokudan' && me === author.id
+      ? { title: 'あなたが親です', note: '句は作りません。出そろったら好きな1句を選んでください。' }
+      : s.mode === 'contest' && me !== author.id
+        ? { title: 'あなたは審査員です', note: `${author.name} が詠み終わったら0〜100点を付けます。` }
+        : { title: '提出しました', note: null };
   const waiting = s.turnQueue.map((id) => playerById(s, id)?.name ?? '?');
 
   return (
     <>
-      <h2>{isHost ? 'あなたが親です' : '提出しました'}</h2>
-      {isHost && <p className="sub center">句は作りません。出そろったら好きな1句を選んでください。</p>}
+      <h2>{role.title}</h2>
+      {role.note && <p className="sub center">{role.note}</p>}
       {mine && (
         <div className="board">
           <HaikuView haiku={mine} />

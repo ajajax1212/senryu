@@ -348,31 +348,6 @@ export function reducer(state: GameState, action: Action): GameState {
       }
     }
 
-    case 'RESTART': {
-      // 顔ぶれはそのまま。得点と手札だけ捨てて配り直す
-      if (state.phase !== 'gameover') return state;
-      const seed = action.seed ?? Date.now();
-      const names = state.players.map((p) => p.name);
-      const { hands, deck5, deck7 } = deal(state.settings.decks, seed, names);
-      return beginRound(
-        {
-          ...state,
-          seed,
-          deck5,
-          deck7,
-          discard: [],
-          lastResult: null,
-          players: state.players.map((p, i) => ({
-            ...p,
-            hand: hands[i],
-            score: 0,
-            scoreHistory: [],
-          })),
-        },
-        0,
-      );
-    }
-
     case 'NEXT_ROUND': {
       if (state.phase !== 'roundResult') return state;
       const next = state.round + 1;

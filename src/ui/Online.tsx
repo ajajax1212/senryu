@@ -3,6 +3,7 @@ import { DECKS } from '../engine/cards';
 import type { DeckId } from '../engine/types';
 import { codeFromUrl, useRoom, type Lobby } from '../net/useRoom';
 import { Game } from './Game';
+import { MODES } from './Setup';
 import type { Draft } from './Turn';
 import { DeadlineBar } from './parts';
 
@@ -48,6 +49,7 @@ export function Online({ onBack }: { onBack: () => void }) {
         setDraft={(d) => setDraft({ ...d, key: turnKey })}
         dispatch={(a) => room.send(a)}
         canAdvance={lobby.hostId === game.me}
+        onReplay={room.toLobby}
       />
     </>
   );
@@ -150,20 +152,16 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
 
       <div className="panel col">
         <h3>モード</h3>
-        {(['dokudan', 'contest'] as const).map((m) => (
+        {MODES.map((m) => (
           <div
-            key={m}
-            className={`deck-option${lobby.mode === m ? ' on' : ''}${amHost ? '' : ' locked'}`}
-            onClick={() => amHost && room.configure({ mode: m })}
+            key={m.id}
+            className={`deck-option${lobby.mode === m.id ? ' on' : ''}${amHost ? '' : ' locked'}`}
+            onClick={() => amHost && room.configure({ mode: m.id })}
           >
-            <div className="check">{lobby.mode === m ? '✓' : ''}</div>
+            <div className="check">{lobby.mode === m.id ? '✓' : ''}</div>
             <div className="grow">
-              <div>{m === 'dokudan' ? '独断と偏見モード' : 'コンテストモード'}</div>
-              <div className="sub">
-                {m === 'dokudan'
-                  ? '親が好みで一番良い句を選ぶ。全員同時に作句できる'
-                  : '1人ずつ提出し、他の全員が100点満点で採点する'}
-              </div>
+              <div>{m.label}</div>
+              <div className="sub">{m.note}</div>
             </div>
           </div>
         ))}

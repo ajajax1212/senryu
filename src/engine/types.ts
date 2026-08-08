@@ -159,6 +159,4 @@ export type Action =
       playerId?: string;
       partial?: { upperId?: string; middleId?: string; lowerId?: string };
     }
-  | { type: 'NEXT_ROUND' }
-  /** 同じ顔ぶれのまま、得点を捨ててもう一戦する */
-  | { type: 'RESTART'; seed?: number };
+  | { type: 'NEXT_ROUND' };

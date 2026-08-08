@@ -208,6 +208,23 @@ io.on('connection', (socket) => {
     });
   });
 
+  /**
+   * 総合結果からロビーへ戻す。もう一戦するときにモードや札を変えられるよう、
+   * 同じ設定で配り直すのではなく設定画面まで巻き戻す。顔ぶれと席はそのまま残る。
+   */
+  socket.on('host:toLobby', ({ code }: { code: string }, ack?: Ack) => {
+    withRoom(socket, code, ack, (room) => {
+      if (!requireHost(room, socket, ack)) return;
+      if (!room.game) return ack?.({ ok: false, error: 'まだ始まっていません' });
+      if (room.game.phase !== 'gameover') {
+        return ack?.({ ok: false, error: 'まだ終わっていません' });
+      }
+      room.game = null;
+      ack?.({ ok: true });
+      broadcast(room);
+    });
+  });
+
   socket.on('game:action', ({ code, action }: { code: string; action: Action }, ack?: Ack) => {
     withRoom(socket, code, ack, (room, playerId) => {
       if (!room.game) return ack?.({ ok: false, error: 'まだ始まっていません' });
@@ -216,13 +233,8 @@ io.on('connection', (socket) => {
       const owned: Action =
         'playerId' in action ? ({ ...action, playerId } as Action) : action;
 
-      // 進行系（次のラウンドへ・再戦）はホストだけ。ほかは本人の行動として通す
-      if (
-        (owned.type === 'NEXT_ROUND' || owned.type === 'RESTART') &&
-        !requireHost(room, socket, ack)
-      ) {
-        return;
-      }
+      // 進行系（次のラウンドへ）はホストだけ。ほかは本人の行動として通す
+      if (owned.type === 'NEXT_ROUND' && !requireHost(room, socket, ack)) return;
       if (owned.type === 'START_GAME' || owned.type === 'TIMEOUT' || owned.type === 'TAKE_SEAT') {
         return ack?.({ ok: false, error: 'この操作はできません' });
       }

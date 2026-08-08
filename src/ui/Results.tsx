@@ -114,13 +114,14 @@ export function RoundResult({
   // 独断と偏見は選ばれた句、コンテストは唯一の提出句を主役にする
   const won =
     r?.mode === 'contest' ? r.submissions[0] : r?.submissions.find((h) => h.authorId === r.winnerId);
-  const stamp = r?.mode === 'contest' && r.average !== undefined ? gradeFor(r.average) : '一';
-  // 選ばれた瞬間だけ、画面中央で大きく見せる。数秒で引くか、触れば飛ばせる
+  const stamp = r?.mode === 'contest' && r.average !== undefined ? gradeFor(r.average) : '選';
+  // 選ばれた瞬間だけ、画面中央で大きく見せる。触れば飛ばせる。
+  // 判子は 0.6秒待ってから押されるので、その余韻まで見せてから引く
   const [revealing, setRevealing] = useState(Boolean(won));
 
   useEffect(() => {
     if (!revealing) return;
-    const t = setTimeout(() => setRevealing(false), 2200);
+    const t = setTimeout(() => setRevealing(false), 5000);
     return () => clearTimeout(t);
   }, [revealing]);
 
@@ -155,7 +156,7 @@ export function RoundResult({
               haiku={won!}
               author={`${name(r.winnerId!)} ＋1ポイント`}
               variant="won"
-              stamp="一"
+              stamp="選"
             />
             {r.submissions
               .filter((h) => h.authorId !== r.winnerId)
@@ -206,13 +207,13 @@ export function RoundResult({
 export function GameOver({
   s,
   canAdvance,
-  dispatch,
-  onRestart,
+  onReplay,
+  onExit,
 }: {
   s: GameState;
   canAdvance: boolean;
-  dispatch: (a: Action) => void;
-  onRestart?: () => void;
+  onReplay?: () => void;
+  onExit?: () => void;
 }) {
   const table = ranking(s);
   const top = table[0].score;
@@ -246,16 +247,19 @@ export function GameOver({
         {table.filter((p) => p.score === top).length > 1 ? '同率優勝' : `${table[0].name} の勝ち`}
       </p>
       <div className="grow" />
-      {/* 同じ顔ぶれのまま、得点を捨ててもう一戦する */}
-      {canAdvance ? (
-        <button className="primary wide" onClick={() => dispatch({ type: 'RESTART' })}>
-          続けて遊ぶ
+      {/* 設定画面まで戻す。同じ設定で配り直すだけだとモードを変えられないため */}
+      {canAdvance && onReplay ? (
+        <button className="primary wide" onClick={onReplay}>
+          もう一度遊ぶ
         </button>
       ) : (
         <p className="sub center">ホストが次の一戦を始めるのを待っています</p>
       )}
-      {onRestart && (
-        <button className="ghost wide" onClick={onRestart}>
+      {canAdvance && onReplay && (
+        <p className="sub center">モードや使う札を選び直せます</p>
+      )}
+      {onExit && (
+        <button className="ghost wide" onClick={onExit}>
           タイトルへ
         </button>
       )}

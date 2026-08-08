@@ -5,20 +5,33 @@ import { DEFAULT_TIME_LIMITS, type DeckId, type GameSettings, type Mode } from '
 const MIN_PLAYERS = 3;
 const MAX_PLAYERS = 8;
 
+/** ロビーの説明と同じ文言を使う。2か所で食い違わないようここに置く */
+export const MODES = [
+  { id: 'dokudan' as const, label: '独断と偏見モード', note: '親が好みで一番良い句を選ぶ。全員同時に作句できる' },
+  { id: 'contest' as const, label: 'コンテストモード', note: '1人ずつ提出し、他の全員が100点満点で採点する' },
+];
+
 export function Setup({
   mode,
+  onModeChange,
+  initialNames,
+  initialDecks,
   online,
   onStart,
   onBack,
 }: {
   mode: Mode;
+  onModeChange: (m: Mode) => void;
+  /** 前回の顔ぶれ。もう一戦するときに入力し直させない */
+  initialNames: string[];
+  initialDecks: DeckId[];
   /** オンライン版では名前入力はロビー側が持つのでここでは使わない */
   online: boolean;
   onStart: (names: string[], settings: GameSettings) => void;
   onBack: () => void;
 }) {
-  const [names, setNames] = useState(['', '', '']);
-  const [decks, setDecks] = useState<DeckId[]>(['standard', 'meme']);
+  const [names, setNames] = useState(initialNames);
+  const [decks, setDecks] = useState<DeckId[]>(initialDecks);
   const [confirmingR18, setConfirmingR18] = useState(false);
 
   const filled = names.map((n) => n.trim()).filter(Boolean);
@@ -75,7 +88,25 @@ export function Setup({
         <button className="ghost" onClick={onBack}>
           ←
         </button>
-        <h2>{mode === 'dokudan' ? '独断と偏見モード' : 'コンテストモード'}</h2>
+        <h2 className="grow">ゲーム設定</h2>
+      </div>
+
+      <div className="setup-grid">
+      <div className="panel col">
+        <h3>モード</h3>
+        {MODES.map((m) => (
+          <div
+            key={m.id}
+            className={`deck-option${mode === m.id ? ' on' : ''}`}
+            onClick={() => onModeChange(m.id)}
+          >
+            <div className="check">{mode === m.id ? '✓' : ''}</div>
+            <div className="grow">
+              <div>{m.label}</div>
+              <div className="sub">{m.note}</div>
+            </div>
+          </div>
+        ))}
       </div>
 
       <div className="panel col">
@@ -130,6 +161,7 @@ export function Setup({
             </div>
           );
         })}
+      </div>
       </div>
 
       <button
