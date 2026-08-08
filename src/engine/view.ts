@@ -43,8 +43,13 @@ export function viewFor(s: GameState, me: string): PlayerView {
     seed: 0,
     players: s.players.map((p) => (p.id === me ? p : { ...p, hand: [] })),
     // 自分がまだ詠んでいないうちに他人の句が見えると先に読まれてしまう。
-    // 全員出し終わって審査・採点に入るまでは伏せる
-    submissions: s.phase === 'turn' ? [] : isJudging ? [] : s.submissions,
+    // ただし自分が出した句だけは、提出後の待機画面で見せる必要がある
+    submissions:
+      s.phase === 'turn'
+        ? s.submissions.filter((h) => h.authorId === me)
+        : isJudging
+          ? []
+          : s.submissions,
     // 採点中は他人が何点入れたか見えてはいけない。自分の点だけ残す
     ratings: settled
       ? s.ratings

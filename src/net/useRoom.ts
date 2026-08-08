@@ -31,8 +31,8 @@ export function codeFromUrl(): string | null {
  * localStorage ではなく sessionStorage を使う。localStorage は同じブラウザの
  * 全タブで共有されるので、2つ目のタブを開くと1つ目の席を乗っ取ってしまう。
  */
-function saveSeat(code: string, playerId: string) {
-  sessionStorage.setItem(`senryu:${code}`, playerId);
+function saveSeat(code: string, token: string) {
+  sessionStorage.setItem(`senryu:${code}`, token);
 }
 function loadSeat(code: string): string | null {
   return sessionStorage.getItem(`senryu:${code}`);
@@ -83,10 +83,10 @@ export function useRoom() {
 
   const enter = useCallback((res: Ack) => {
     const c = res.code as string;
-    const id = res.playerId as string;
     setCode(c);
-    setMe(id);
-    saveSeat(c, id);
+    setMe(res.playerId as string);
+    // 席に戻るための合鍵。IDではなくこれを保存する
+    saveSeat(c, res.token as string);
     history.replaceState(null, '', `/r/${c}`);
   }, []);
 
@@ -115,7 +115,7 @@ export function useRoom() {
     async (roomCode: string) => {
       const seat = loadSeat(roomCode);
       if (!seat) return false;
-      const res = await emit('room:rejoin', { code: roomCode, playerId: seat });
+      const res = await emit('room:rejoin', { code: roomCode, token: seat });
       if (!res.ok) return false;
       enter(res);
       return true;

@@ -3,6 +3,12 @@ import type { GameState, Mode } from '../src/engine/types';
 export type RoomPlayer = {
   /** エンジン側の players 配列の位置に対応する。p0, p1, ... */
   id: string;
+  /**
+   * 席の合鍵。再接続はこれで本人確認する。
+   * id は p0/p1/... と推測できてしまうので、id だけで席を渡すと
+   * 他人のIDを送るだけで手札ごと乗っ取れてしまう。
+   */
+  token: string;
   name: string;
   socketId: string | null;
   connected: boolean;
@@ -64,17 +70,31 @@ export function getRoom(code: string | undefined): Room | undefined {
   return room;
 }
 
+function makeToken(): string {
+  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+}
+
 export function addPlayer(room: Room, name: string, socketId: string): RoomPlayer {
   // idは席順そのもの。エンジンが START_GAME で振る p0..pn と一致させる必要がある
-  const player: RoomPlayer = { id: `p${room.players.length}`, name, socketId, connected: true };
+  const player: RoomPlayer = {
+    id: `p${room.players.length}`,
+    token: makeToken(),
+    name,
+    socketId,
+    connected: true,
+  };
   room.players.push(player);
   if (!room.hostId) room.hostId = player.id;
   return player;
 }
 
-/** リロードして戻ってきたタブを、新しいプレイヤーを作らずに元の席へ繋ぎ直す */
-export function reattach(room: Room, playerId: string, socketId: string): RoomPlayer | null {
-  const player = room.players.find((p) => p.id === playerId);
+/**
+ * リロードして戻ってきたタブを、新しいプレイヤーを作らずに元の席へ繋ぎ直す。
+ * 合鍵で本人を特定する。ロビーで誰かが抜けると id は振り直されるので、
+ * id を頼りにすると別人の席に繋がってしまう。
+ */
+export function reattach(room: Room, token: string, socketId: string): RoomPlayer | null {
+  const player = room.players.find((p) => p.token === token);
   if (!player) return null;
   player.socketId = socketId;
   player.connected = true;
@@ -86,6 +106,12 @@ export function markDisconnected(room: Room, playerId: string): void {
   if (player) {
     player.connected = false;
     player.socketId = null;
+  }
+  // ホストが落ちたままだと「次のラウンドへ」を押せる人がいなくなり、
+  // ゲームが結果画面で止まったまま誰も進められなくなる。繋がっている人に託す
+  if (room.hostId === playerId) {
+    const alive = room.players.find((p) => p.connected);
+    if (alive) room.hostId = alive.id;
   }
 }
 
@@ -110,8 +136,4 @@ export function sweepIdleRooms(maxAgeMs = 6 * 60 * 60 * 1000): void {
       rooms.delete(code);
     }
   }
-}
-
-export function roomCount(): number {
-  return rooms.size;
 }

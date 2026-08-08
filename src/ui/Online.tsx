@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DECKS } from '../engine/cards';
 import type { DeckId } from '../engine/types';
 import { codeFromUrl, useRoom, type Lobby } from '../net/useRoom';
@@ -9,11 +9,15 @@ import { DeadlineBar } from './parts';
 export function Online({ onBack }: { onBack: () => void }) {
   const room = useRoom();
   const [booted, setBooted] = useState(false);
+  // useRoom は毎レンダー新しい object を返すので、booted だけを頼りにすると
+  // 状態が反映される前に rejoin が何度も飛ぶ。実行済みかを ref で押さえる
+  const bootedOnce = useRef(false);
   const [draft, setDraft] = useState<Draft & { key: string }>({ key: '' });
 
   // URL に部屋コードが入っていれば、まず前の席に戻れるか試す
   useEffect(() => {
-    if (booted || !room.connected) return;
+    if (bootedOnce.current || !room.connected) return;
+    bootedOnce.current = true;
     const urlCode = codeFromUrl();
     if (urlCode) room.rejoin(urlCode).finally(() => setBooted(true));
     else setBooted(true);

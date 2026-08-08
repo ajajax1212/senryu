@@ -14,6 +14,7 @@ export type GameProps = {
   dispatch: (a: Action) => void;
   /** 次のラウンドへ進める権限があるか（オンラインではホストのみ） */
   canAdvance: boolean;
+  /** タイトルへ戻る。1台版のみ */
   onRestart?: () => void;
 };
 
@@ -31,7 +32,7 @@ export function Game({ s, me, board, draft, setDraft, dispatch, canAdvance, onRe
     case 'roundResult':
       return <RoundResult s={s} canAdvance={canAdvance} dispatch={dispatch} />;
     case 'gameover':
-      return <GameOver s={s} onRestart={onRestart} />;
+      return <GameOver s={s} canAdvance={canAdvance} dispatch={dispatch} onRestart={onRestart} />;
     default:
       return null;
   }

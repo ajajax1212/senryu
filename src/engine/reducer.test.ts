@@ -506,6 +506,47 @@ describe('時間切れ', () => {
   });
 });
 
+describe('続けて遊ぶ', () => {
+  /** 独断と偏見で最後まで進めて gameover にする */
+  function playThrough(): GameState {
+    let s = startOnline('dokudan');
+    for (let round = 0; round < 3; round++) {
+      s = reducer(s, { type: 'TIMEOUT' });          // 全員自動提出
+      s = reducer(s, { type: 'JUDGE', playerId: s.players[round].id, index: 0 });
+      s = reducer(s, { type: 'NEXT_ROUND' });
+    }
+    return s;
+  }
+
+  it('顔ぶれはそのままで、得点と手札が配り直される', () => {
+    const done = playThrough();
+    expect(done.phase).toBe('gameover');
+    expect(done.players.some((p) => p.score > 0)).toBe(true);
+
+    const again = reducer(done, { type: 'RESTART', seed: 7 });
+    expect(again.phase).toBe('turn');
+    expect(again.round).toBe(0);
+    expect(again.players.map((p) => p.name)).toEqual(done.players.map((p) => p.name));
+    expect(again.players.map((p) => p.id)).toEqual(done.players.map((p) => p.id));
+    for (const p of again.players) {
+      expect(p.score).toBe(0);
+      expect(p.scoreHistory).toEqual([]);
+      expect(p.hand.filter((c) => c.mora === 5)).toHaveLength(4);
+      expect(p.hand.filter((c) => c.mora === 7)).toHaveLength(2);
+    }
+    expect(again.discard).toEqual([]);
+    expect(again.lastResult).toBeNull();
+    // 同じ札が2人に配られていない
+    const ids = again.players.flatMap((p) => p.hand.map((c) => c.id));
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('終了していないときは何も起きない', () => {
+    const s = startOnline('dokudan');
+    expect(reducer(s, { type: 'RESTART' })).toBe(s);
+  });
+});
+
 describe('コンテストの位', () => {
   it('平均点から位が決まる', () => {
     expect(gradeFor(0)).toBe('駄作');

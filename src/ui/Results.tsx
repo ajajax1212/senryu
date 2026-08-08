@@ -203,7 +203,17 @@ export function RoundResult({
   );
 }
 
-export function GameOver({ s, onRestart }: { s: GameState; onRestart?: () => void }) {
+export function GameOver({
+  s,
+  canAdvance,
+  dispatch,
+  onRestart,
+}: {
+  s: GameState;
+  canAdvance: boolean;
+  dispatch: (a: Action) => void;
+  onRestart?: () => void;
+}) {
   const table = ranking(s);
   const top = table[0].score;
   const unit = s.mode === 'dokudan' ? '勝' : '点';
@@ -236,9 +246,17 @@ export function GameOver({ s, onRestart }: { s: GameState; onRestart?: () => voi
         {table.filter((p) => p.score === top).length > 1 ? '同率優勝' : `${table[0].name} の勝ち`}
       </p>
       <div className="grow" />
+      {/* 同じ顔ぶれのまま、得点を捨ててもう一戦する */}
+      {canAdvance ? (
+        <button className="primary wide" onClick={() => dispatch({ type: 'RESTART' })}>
+          続けて遊ぶ
+        </button>
+      ) : (
+        <p className="sub center">ホストが次の一戦を始めるのを待っています</p>
+      )}
       {onRestart && (
-        <button className="primary wide" onClick={onRestart}>
-          もう一度遊ぶ
+        <button className="ghost wide" onClick={onRestart}>
+          タイトルへ
         </button>
       )}
     </>

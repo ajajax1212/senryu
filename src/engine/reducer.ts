@@ -212,21 +212,33 @@ function applyJudge(s: GameState, index: number): GameState {
   };
 }
 
+/** 山札を切り直して全員に配る。開始時と再戦で共有する */
+function deal(decks: GameState['settings']['decks'], seed: number, names: string[]) {
+  const rng = makeRng(seed);
+  const { deck5, deck7 } = cardsFor(decks);
+  let pile5 = shuffle(deck5, rng);
+  let pile7 = shuffle(deck7, rng);
+  const hands = names.map(() => {
+    const hand = [...pile5.slice(0, HAND_5), ...pile7.slice(0, HAND_7)];
+    pile5 = pile5.slice(HAND_5);
+    pile7 = pile7.slice(HAND_7);
+    return hand;
+  });
+  return { hands, deck5: pile5, deck7: pile7 };
+}
+
 export function reducer(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'START_GAME': {
       const seed = action.seed ?? Date.now();
-      const rng = makeRng(seed);
-      const { deck5, deck7 } = cardsFor(action.settings.decks);
-      let pile5 = shuffle(deck5, rng);
-      let pile7 = shuffle(deck7, rng);
-
-      const players: Player[] = action.names.map((name, i) => {
-        const hand = [...pile5.slice(0, HAND_5), ...pile7.slice(0, HAND_7)];
-        pile5 = pile5.slice(HAND_5);
-        pile7 = pile7.slice(HAND_7);
-        return { id: `p${i}`, name, hand, score: 0, scoreHistory: [] };
-      });
+      const { hands, deck5: pile5, deck7: pile7 } = deal(action.settings.decks, seed, action.names);
+      const players: Player[] = action.names.map((name, i) => ({
+        id: `p${i}`,
+        name,
+        hand: hands[i],
+        score: 0,
+        scoreHistory: [],
+      }));
 
       const base: GameState = {
         mode: action.mode,
@@ -334,6 +346,31 @@ export function reducer(state: GameState, action: Action): GameState {
           // 引き継ぎ画面と結果画面には時間制限を付けない
           return state;
       }
+    }
+
+    case 'RESTART': {
+      // 顔ぶれはそのまま。得点と手札だけ捨てて配り直す
+      if (state.phase !== 'gameover') return state;
+      const seed = action.seed ?? Date.now();
+      const names = state.players.map((p) => p.name);
+      const { hands, deck5, deck7 } = deal(state.settings.decks, seed, names);
+      return beginRound(
+        {
+          ...state,
+          seed,
+          deck5,
+          deck7,
+          discard: [],
+          lastResult: null,
+          players: state.players.map((p, i) => ({
+            ...p,
+            hand: hands[i],
+            score: 0,
+            scoreHistory: [],
+          })),
+        },
+        0,
+      );
     }
 
     case 'NEXT_ROUND': {

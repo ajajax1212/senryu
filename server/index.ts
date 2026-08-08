@@ -92,6 +92,19 @@ function scheduleTimeout(room: Room): void {
   }, limit * 1000);
 }
 
+/**
+ * ロビーで誰かが抜けると席番号が振り直される。各接続が覚えている
+ * playerId は古いままなので、ここで貼り直す。放置すると残った人の
+ * 操作が「参加していません」で弾かれるようになる。
+ */
+function resyncSeats(room: Room): void {
+  for (const player of room.players) {
+    if (!player.socketId) continue;
+    const sock = io.sockets.sockets.get(player.socketId);
+    if (sock) sock.data.playerId = player.id;
+  }
+}
+
 function dispatch(room: Room, action: Action): void {
   if (!room.game) return;
   room.game = reducer(room.game, action);
@@ -132,7 +145,7 @@ io.on('connection', (socket) => {
     const room = createRoom();
     const player = addPlayer(room, trimmed, socket.id);
     seat(room, player.id);
-    ack?.({ ok: true, code: room.code, playerId: player.id });
+    ack?.({ ok: true, code: room.code, playerId: player.id, token: player.token });
     broadcast(room);
   });
 
@@ -146,17 +159,17 @@ io.on('connection', (socket) => {
 
     const player = addPlayer(room, trimmed, socket.id);
     seat(room, player.id);
-    ack?.({ ok: true, code: room.code, playerId: player.id });
+    ack?.({ ok: true, code: room.code, playerId: player.id, token: player.token });
     broadcast(room);
   });
 
-  socket.on('room:rejoin', ({ code, playerId }: { code: string; playerId: string }, ack?: Ack) => {
+  socket.on('room:rejoin', ({ code, token }: { code: string; token: string }, ack?: Ack) => {
     const room = getRoom(code);
     if (!room) return ack?.({ ok: false, error: 'このURLの部屋は見つかりませんでした' });
-    const player = reattach(room, playerId, socket.id);
+    const player = token ? reattach(room, token, socket.id) : null;
     if (!player) return ack?.({ ok: false, error: 'プレイヤー情報が見つかりませんでした' });
     seat(room, player.id);
-    ack?.({ ok: true, code: room.code, playerId: player.id });
+    ack?.({ ok: true, code: room.code, playerId: player.id, token: player.token });
     broadcast(room);
   });
 
@@ -203,8 +216,13 @@ io.on('connection', (socket) => {
       const owned: Action =
         'playerId' in action ? ({ ...action, playerId } as Action) : action;
 
-      // 進行系（次のラウンドへ）はホストだけ。ほかは本人の行動として通す
-      if (owned.type === 'NEXT_ROUND' && !requireHost(room, socket, ack)) return;
+      // 進行系（次のラウンドへ・再戦）はホストだけ。ほかは本人の行動として通す
+      if (
+        (owned.type === 'NEXT_ROUND' || owned.type === 'RESTART') &&
+        !requireHost(room, socket, ack)
+      ) {
+        return;
+      }
       if (owned.type === 'START_GAME' || owned.type === 'TIMEOUT' || owned.type === 'TAKE_SEAT') {
         return ack?.({ ok: false, error: 'この操作はできません' });
       }
@@ -220,6 +238,7 @@ io.on('connection', (socket) => {
   socket.on('room:leave', ({ code }: { code: string }, ack?: Ack) => {
     withRoom(socket, code, ack, (room, playerId) => {
       removeFromLobby(room, playerId);
+      resyncSeats(room);
       socket.leave(room.code);
       socket.data.playerId = undefined;
       ack?.({ ok: true });
@@ -231,8 +250,12 @@ io.on('connection', (socket) => {
     const room = getRoom(socket.data.code);
     if (!room || !socket.data.playerId) return;
     // 開始前ならロビーから消す。開始後は席を残す（時間切れで自動処理される）
-    if (room.game) markDisconnected(room, socket.data.playerId);
-    else removeFromLobby(room, socket.data.playerId);
+    if (room.game) {
+      markDisconnected(room, socket.data.playerId);
+    } else {
+      removeFromLobby(room, socket.data.playerId);
+      resyncSeats(room);
+    }
     broadcast(room);
   });
 });
