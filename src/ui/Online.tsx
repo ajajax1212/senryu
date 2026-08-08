@@ -126,31 +126,42 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
 
   return (
     <>
-      <h1>{lobby.code}</h1>
-      <div className="panel col">
+      <h1 className="lobby-code">{lobby.code}</h1>
+
+      {/* 広い画面では「誰が来たか」と「何で遊ぶか」を横に並べる。
+          縦に積むと1画面に収まらず、開始ボタンまでスクロールが要る。
+          どこに置くかは CSS の grid-template-areas 側で決める */}
+      <div className="lobby-grid lb-online">
+      <div className="panel col lb-invite">
         <h3>このURLを配れば参加できます</h3>
-        <div className="invite">{url}</div>
-        <button className="ghost wide" onClick={copy}>
-          {copied ? 'コピーしました' : 'URLをコピー'}
-        </button>
+        <div className="row">
+          <div className="invite grow">{url}</div>
+          <button className="ghost" onClick={copy}>
+            {copied ? 'コピー済' : 'コピー'}
+          </button>
+        </div>
       </div>
 
-      <div className="panel col">
+      <div className="panel col lb-players">
         <h3>参加者（{lobby.players.length}人）</h3>
-        {lobby.players.map((p) => (
-          <div key={p.id} className="row">
-            <span className="grow">
-              {p.name}
-              {p.id === lobby.hostId && ' 👑'}
-              {p.id === room.me && '（あなた）'}
-            </span>
-            <span className="badge">{p.connected ? '接続中' : '切断'}</span>
-          </div>
-        ))}
+        {/* 定員8人まで縦に並べると枠が伸びて開始ボタンが画面外へ出る。横に流す */}
+        <div className="player-list">
+          {lobby.players.map((p) => (
+            <div key={p.id} className="row">
+              <span className="grow">
+                {p.name}
+                {p.id === lobby.hostId && ' 👑'}
+                {p.id === room.me && '（あなた）'}
+              </span>
+              {/* 接続中は当たり前なので出さない。目に入れたいのは切れた人だけ */}
+              {!p.connected && <span className="badge">切断</span>}
+            </div>
+          ))}
+        </div>
         {lobby.players.length < 3 && <p className="sub">あと{3 - lobby.players.length}人必要です</p>}
       </div>
 
-      <div className="panel col">
+      <div className="panel col lb-mode">
         <h3>モード</h3>
         {MODES.map((m) => (
           <div
@@ -167,7 +178,7 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
         ))}
       </div>
 
-      <div className="panel col">
+      <div className="panel col lb-decks">
         <h3>使う札</h3>
         {DECKS.map((d) => {
           const on = lobby.decks.includes(d.id);
@@ -183,17 +194,19 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
               }}
             >
               <div className="check">{on ? '✓' : ''}</div>
-              <div className="grow">
-                <div>
-                  {d.label} {d.rating === 'r18' && <span className="badge r18">R18</span>}
-                </div>
-                <div className="sub">
-                  5音 {d.count5}枚 ／ 7音 {d.count7}枚{d.id === 'standard' && ' ・常に使用'}
-                </div>
+              {/* 枚数は名前と同じ行に寄せる。1枚ごとに2行使うと選択肢だけで画面が埋まる */}
+              <div className="grow opt-line">
+                <span>{d.label}</span>
+                {d.rating === 'r18' && <span className="badge r18">R18</span>}
+                <span className="sub opt-count">
+                  5音{d.count5}／7音{d.count7}
+                  {d.id === 'standard' && ' ・常に使用'}
+                </span>
               </div>
             </div>
           );
         })}
+      </div>
       </div>
 
       <div className="grow" />

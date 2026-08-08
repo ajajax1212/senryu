@@ -674,6 +674,21 @@ tr.winner td {
   border-color: var(--indigo);
   color: #fff;
 }
+/* 名前と枚数を1行に。入りきらなければ折り返して従来どおり2行になる */
+.opt-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.opt-count { margin-left: auto; white-space: nowrap; }
+
+/* 参加者。狭い画面では1列 */
+.player-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
 .invite {
   background: var(--paper-sunk);
@@ -954,11 +969,17 @@ tr.winner td {
   flex-direction: column;
   gap: 14px;
 }
-/* 設定画面。狭い画面では縦一列のまま */
-.setup-grid {
+/* ロビー・設定画面。狭い画面では DOM の順に縦一列 */
+.lobby-grid {
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+/* 部屋コードは題字ではないので、見出しほど場所を取らせない */
+.lobby-code {
+  font-size: 30px;
+  letter-spacing: 0.16em;
+  margin: 4px 0 0;
 }
 
 /*
@@ -968,8 +989,8 @@ tr.winner td {
 @media (min-width: 900px) {
   #root {
     max-width: 1080px;
-    padding: 28px 36px 44px;
-    gap: 22px;
+    padding: 24px 36px 26px;
+    gap: 18px;
   }
 
   h1 { font-size: 46px; }
@@ -999,12 +1020,49 @@ tr.winner td {
     gap: 18px;
   }
 
-  .setup-grid {
+  /*
+   * 「誰と遊ぶか」と「何で遊ぶか」を横に並べ、開始ボタンまで1画面に収める。
+   * 縦に積むと選択肢を見るだけでスクロールが要る。
+   * 高さの違う枠を左右に置くので、行の高さは背の高いほうに揃う。
+   * 札の選択は一番背が高いので、2行ぶんをまたがせて縦の無駄を消す。
+   */
+  .lobby-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 20px;
     align-items: start;
   }
+  /* 背の高い枠どうしを同じ行に置くと、行の高さの無駄が一番小さくなる */
+  .lb-online {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'invite players'
+      'mode decks';
+  }
+  .lb-setup {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'mode decks'
+      'players decks';
+  }
+  .lb-invite { grid-area: invite; }
+  .lb-players { grid-area: players; }
+  .lb-mode { grid-area: mode; }
+  .lb-decks { grid-area: decks; }
+
+  .lobby-code { font-size: 32px; margin: 0; }
+  /* 8人まで入るので横に流す。縦に伸ばすと開始ボタンが画面外へ出る。
+     枠が狭いときに2列へ押し込むと名前が折り返してかえって背が伸びるので、
+     幅が足りるときだけ2列になるようにする */
+  .player-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px 16px;
+  }
+  /* 選択肢は数が多いので、1つあたりの高さを詰める */
+  .lobby-grid .deck-option { padding: 10px 12px; gap: 10px; }
+  .lobby-grid .deck-option .sub { font-size: 13px; line-height: 1.5; }
+  .lobby-grid .panel { padding: 14px; }
+  .lobby-grid .panel.col { gap: 10px; }
 
   /* 札と枠を一回り大きくする。--box は札の内寸−2px（文字の自動縮小に使う） */
   .card { width: 76px; height: 178px; padding: 11px 6px; }
@@ -1032,6 +1090,21 @@ tr.winner td {
 
   .title-mark { font-size: 54px; padding: 32px 26px; }
   .handoff .name { font-size: 52px; }
+}
+
+/* 3列に開けるだけの横幅があるロビーは、ここで一段縮む */
+@media (min-width: 1000px) {
+  /* 3列に開く。背の高い「使う札」を2行またがせると縦が一番縮む */
+  .lb-online {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-areas:
+      'invite mode decks'
+      'players mode decks';
+  }
+  .lb-setup {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-areas: 'mode players decks';
+  }
 }
 
 /* 縦にも余裕がある大きな画面では、句をもう一段大きく見せる */

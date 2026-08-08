@@ -91,8 +91,9 @@ export function Setup({
         <h2 className="grow">ゲーム設定</h2>
       </div>
 
-      <div className="setup-grid">
-      <div className="panel col">
+      {/* 横に並べて1画面に収める。配置は CSS の grid-template-areas 側 */}
+      <div className="lobby-grid lb-setup">
+      <div className="panel col lb-mode">
         <h3>モード</h3>
         {MODES.map((m) => (
           <div
@@ -109,17 +110,20 @@ export function Setup({
         ))}
       </div>
 
-      <div className="panel col">
+      <div className="panel col lb-players">
         <h3>プレイヤー（{MIN_PLAYERS}〜{MAX_PLAYERS}人）</h3>
-        {names.map((n, i) => (
-          <input
-            key={i}
-            type="text"
-            value={n}
-            placeholder={`${i + 1}人目`}
-            onChange={(e) => setName(i, e.target.value)}
-          />
-        ))}
+        {/* 定員8人まで縦に並べると枠が伸びて開始ボタンが画面外へ出る。横に流す */}
+        <div className="player-list">
+          {names.map((n, i) => (
+            <input
+              key={i}
+              type="text"
+              value={n}
+              placeholder={`${i + 1}人目`}
+              onChange={(e) => setName(i, e.target.value)}
+            />
+          ))}
+        </div>
         <div className="row">
           <button
             className="ghost grow"
@@ -138,7 +142,7 @@ export function Setup({
         </div>
       </div>
 
-      <div className="panel col">
+      <div className="panel col lb-decks">
         <h3>使う札</h3>
         {DECKS.map((d) => {
           const on = decks.includes(d.id);
@@ -150,13 +154,14 @@ export function Setup({
               onClick={() => toggleDeck(d.id)}
             >
               <div className="check">{on ? '✓' : ''}</div>
-              <div className="grow">
-                <div>
-                  {d.label} {d.rating === 'r18' && <span className="badge r18">R18</span>}
-                </div>
-                <div className="sub">
-                  5音 {d.count5}枚 ／ 7音 {d.count7}枚{locked && ' ・常に使用'}
-                </div>
+              {/* 枚数は名前と同じ行に寄せる。1枚ごとに2行使うと選択肢だけで画面が埋まる */}
+              <div className="grow opt-line">
+                <span>{d.label}</span>
+                {d.rating === 'r18' && <span className="badge r18">R18</span>}
+                <span className="sub opt-count">
+                  5音{d.count5}／7音{d.count7}
+                  {locked && ' ・常に使用'}
+                </span>
               </div>
             </div>
           );
@@ -164,6 +169,7 @@ export function Setup({
       </div>
       </div>
 
+      <div className="grow" />
       <button
         className="primary wide"
         disabled={!ready}
