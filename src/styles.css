@@ -10,21 +10,22 @@
   --vermilion: #b51a1b;
   --vermilion-bright: #d93630;
 
-  /* 生成りの和紙。トークンの #fbf8ff は青寄りで冷たいので、
-     designMd の "warm, low-glare cream" の記述に寄せて温かみを足している */
-  --paper: #f7f4ec;
-  --paper-card: #fffdf7;
-  --paper-panel: #f1ece0;
-  --paper-sunk: #e8e2d4;
+  /* DESIGN.md の値をそのまま使う */
+  --paper: #fbf8ff;
+  --paper-card: #ffffff;
+  --paper-panel: #f5f2fb;
+  --paper-sunk: #e4e1ea;
 
   /* 墨。真っ黒ではなく乾いた炭の色 */
   --sumi: #1b1b21;
-  /* 以前は #454652 / #8b8578 だったが、無地の和紙の上ですら
-     コントラストが 3.3:1 しかなく小さい文字が読めなかった。
-     墨のにじみが最も濃い場所でも基準を満たす濃さに引き上げてある */
-  --sumi-soft: #3b3c46;
-  --sumi-faint: #6e685a;
-  --rule: #cfc7b6;
+  --sumi-soft: #454652;
+  /* 小さい文字も on-surface-variant を使う。DESIGN.md の #767683 は
+     outline（枠線）用のトークンで、文字に使うと 4.3:1 しかなく、
+     墨のにじみの上では 2.9:1 まで落ちて読めなくなる */
+  --sumi-faint: #454652;
+  /* 枠線用。破線のスロットなど */
+  --outline: #767683;
+  --rule: #c6c5d4;
 
   --gold: #a8842c;
 
@@ -56,7 +57,7 @@ body {
    * --ink-on-wash（淡色）を使うこと。
    */
   background-image:
-    radial-gradient(ellipse 85% 72% at 2% 116%, rgba(0, 6, 102, 0.3), transparent 62%),
+    radial-gradient(ellipse 85% 72% at 2% 116%, rgba(0, 6, 102, 0.22), transparent 62%),
     radial-gradient(ellipse 68% 55% at 98% -12%, rgba(181, 26, 27, 0.13), transparent 60%),
     radial-gradient(ellipse 60% 40% at 50% 40%, rgba(0, 6, 102, 0.05), transparent 70%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23f)' opacity='0.05'/%3E%3C/svg%3E");
@@ -184,8 +185,10 @@ input[type='text']:focus {
    花札に倣った太い藍の枠。文字は必ず縦書き。
    upright にしないと「AI絵」「新NISA」のラテン文字が横倒しになる */
 .card {
-  writing-mode: vertical-rl;
-  text-orientation: upright;
+  /* 札そのものは横書きのまま。縦書きにするのは中の文字だけ。
+     card 自体を vertical-rl にすると、flex のインライン軸が縦になり
+     本文と読みが上下に積まれて札からはみ出す */
+  writing-mode: horizontal-tb;
   background: var(--paper-card);
   color: var(--indigo);
   border: 2px solid var(--indigo);
@@ -193,11 +196,13 @@ input[type='text']:focus {
   box-shadow: var(--lift);
   width: 62px;
   height: 146px;
-  padding: 10px 6px;
+  padding: 9px 5px;
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
+  overflow: hidden;
   cursor: pointer;
   user-select: none;
   flex-shrink: 0;
@@ -208,20 +213,24 @@ input[type='text']:focus {
 .card:hover { transform: translateY(-3px); box-shadow: 3px 5px 0 0 rgba(0, 6, 102, 0.18); }
 .card:active { transform: translateY(2px); box-shadow: none; }
 .card .text {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
   font-size: 19px;
   font-weight: 600;
   letter-spacing: 0.08em;
   line-height: 1.1;
   white-space: nowrap;
 }
-/* 読みは札の脇に細く添える。ふりがなの位置 */
+/* 読みは本文の右にふりがなとして細く添える（縦書きのルビは右） */
 .card .reading {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
   font-size: 9px;
   color: var(--sumi-faint);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   align-self: flex-start;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 .card.m7 .text { font-size: 18px; }
 .card.selected {
@@ -482,7 +491,7 @@ input[type='text']:focus {
   text-orientation: upright;
   width: 62px;
   height: 146px;
-  border: 2px dashed var(--sumi-faint);
+  border: 2px dashed var(--outline);
   border-radius: 2px;
   background: rgba(255, 255, 255, 0.35);
   display: flex;
@@ -550,12 +559,38 @@ input[type='range'] {
   accent-color: var(--vermilion);
   height: 34px;
 }
-.quick-scores {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+/* 目盛り。スライダーの下に薄く添えるだけで、押せる要素にはしない */
+.score-scale {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--sumi-faint);
+  padding: 0 2px;
 }
-.quick-scores button { padding: 10px 0; font-size: 13px; }
+/* つまみを大きめにして掴みやすくする */
+input[type='range'] {
+  appearance: none;
+  background: transparent;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--paper-sunk);
+  border-radius: 2px;
+}
+input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  margin-top: -11px;
+  border-radius: 50%;
+  background: var(--vermilion);
+  border: 3px solid var(--paper-card);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  cursor: grab;
+}
+input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; }
 
 /* ── 結果 ── */
 table {

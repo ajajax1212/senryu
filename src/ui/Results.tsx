@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Action, GameState, Haiku } from '../engine/types';
 import { activePlayer, playerById, ranking, totalRounds } from '../engine/reducer';
+import { gradeFor } from '../engine/types';
 import { HaikuView } from './parts';
 
 export function Judge({
@@ -84,13 +85,11 @@ export function Rate({
       <HaikuView haiku={haiku} author={`${author.name} の句`} />
 
       <div className="score-display">{score}</div>
+      {/* つまみを動かして決める。決め打ちのボタンは置かない。
+          押せる数字があると全員そこに寄って平均が偏るため */}
       <input type="range" min={0} max={100} value={score} onChange={(e) => setScore(Number(e.target.value))} />
-      <div className="quick-scores">
-        {[0, 25, 50, 75, 100].map((v) => (
-          <button key={v} onClick={() => setScore(v)}>
-            {v}
-          </button>
-        ))}
+      <div className="score-scale">
+        <span>0</span><span>50</span><span>100</span>
       </div>
 
       <div className="grow" />
@@ -112,7 +111,10 @@ export function RoundResult({
   dispatch: (a: Action) => void;
 }) {
   const r = s.lastResult;
-  const won = r?.submissions.find((h) => h.authorId === r.winnerId);
+  // 独断と偏見は選ばれた句、コンテストは唯一の提出句を主役にする
+  const won =
+    r?.mode === 'contest' ? r.submissions[0] : r?.submissions.find((h) => h.authorId === r.winnerId);
+  const stamp = r?.mode === 'contest' && r.average !== undefined ? gradeFor(r.average) : '一';
   // 選ばれた瞬間だけ、画面中央で大きく見せる。数秒で引くか、触れば飛ばせる
   const [revealing, setRevealing] = useState(Boolean(won));
 
@@ -132,9 +134,11 @@ export function RoundResult({
         <div className="reveal" onClick={() => setRevealing(false)}>
           <div>
             <div className="reveal-inner">
-              <HaikuView haiku={won} stamp="一" />
+              <HaikuView haiku={won} stamp={stamp} />
             </div>
-            <div className="reveal-name">{name(r.winnerId!)}</div>
+            <div className="reveal-name">
+              {r.mode === 'contest' ? `${r.average!.toFixed(1)}点` : name(r.winnerId!)}
+            </div>
             <div className="reveal-hint">タップで結果へ</div>
           </div>
         </div>
@@ -162,9 +166,16 @@ export function RoundResult({
         </>
       ) : (
         <>
-          <HaikuView haiku={r.submissions[0]} author={name(r.submissions[0].authorId)} />
+          <div className="board">
+            <HaikuView
+              haiku={r.submissions[0]}
+              author={name(r.submissions[0].authorId)}
+              variant="won"
+              stamp={gradeFor(r.average!)}
+            />
+          </div>
           <div className="score-display">{r.average!.toFixed(1)}</div>
-          <p className="sub center">平均点</p>
+          <p className="sub center">平均点 — {gradeFor(r.average!)}</p>
           {s.settings.revealRaters && (
             <table>
               <tbody>

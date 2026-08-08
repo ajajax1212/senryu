@@ -56,6 +56,22 @@ export type GameSettings = {
 /** 秒。交換〜作句で5分、審査・採点で2分 */
 export const DEFAULT_TIME_LIMITS = { turn: 300, judge: 120 };
 
+/**
+ * コンテストモードの平均点に付ける位。判子に押す文字。
+ * 全員が0〜100で入れた平均なので中央付近に寄りやすい。
+ * 「秀作」以上が少し珍しく感じられる程度に閾値を置いてある。
+ */
+export const GRADES = [
+  { min: 85, label: '金賞' },
+  { min: 70, label: '秀作' },
+  { min: 50, label: '佳作' },
+  { min: 0, label: '駄作' },
+] as const;
+
+export function gradeFor(average: number): string {
+  return GRADES.find((g) => average >= g.min)!.label;
+}
+
 export type Phase =
   /** タイトル〜プレイヤー登録 */
   | 'setup'

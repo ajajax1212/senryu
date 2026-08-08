@@ -8,6 +8,7 @@ import {
   canAct,
 } from './reducer';
 import { viewFor } from './view';
+import { gradeFor } from './types';
 import type { Action, GameSettings, GameState, Mode } from './types';
 
 const SETTINGS: GameSettings = {
@@ -502,6 +503,19 @@ describe('時間切れ', () => {
     const s = start('dokudan');
     expect(s.phase).toBe('handoff');
     expect(reducer(s, { type: 'TIMEOUT' })).toBe(s);
+  });
+});
+
+describe('コンテストの位', () => {
+  it('平均点から位が決まる', () => {
+    expect(gradeFor(0)).toBe('駄作');
+    expect(gradeFor(49.9)).toBe('駄作');
+    expect(gradeFor(50)).toBe('佳作');
+    expect(gradeFor(69.9)).toBe('佳作');
+    expect(gradeFor(70)).toBe('秀作');
+    expect(gradeFor(84.9)).toBe('秀作');
+    expect(gradeFor(85)).toBe('金賞');
+    expect(gradeFor(100)).toBe('金賞');
   });
 });
 
