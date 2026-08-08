@@ -48,7 +48,7 @@ export function CardView({
   state?: 'selected' | 'discarding';
   onClick?: () => void;
 }) {
-  const cls = ['card', card.mora === 7 ? 'm7' : '', state ?? '', onClick ? '' : 'static']
+  const cls = ['card', card.mora === 7 ? 'm7' : 'm5', state ?? '', onClick ? '' : 'static']
     .filter(Boolean)
     .join(' ');
   // 字余り（6音・8音）の札は文字数が増えるので、既定の大きさのままだと札からはみ出す。
@@ -59,6 +59,7 @@ export function CardView({
     <div className={cls} onClick={onClick} style={{ '--len': len } as CSSProperties}>
       <div className="text">{card.text}</div>
       <div className="reading">{card.reading}</div>
+      <div className="mora-badge">{card.mora === 7 ? '七' : '五'}</div>
     </div>
   );
 }

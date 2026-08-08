@@ -92,9 +92,15 @@ export function Turn({
 
   return (
     <>
-      <div className="turn-head">
-        <h2>{player.name} の手番</h2>
-        <span className={`pill${left > 0 ? ' on' : ''}`}>交換 残り{left}回</span>
+      <div className="hdr-bar">
+        <div className="hdr-group">
+          <span className="hdr-badge">ラウンド {s.round + 1}</span>
+          <span className="hdr-badge">残り札: {s.deck5.length + s.deck7.length}</span>
+        </div>
+        <div className="hdr-title">川柳・{player.name}の句</div>
+        <div className="hdr-group">
+          <span className={`hdr-badge${left > 0 ? ' on' : ''}`}>交換残り: {left}</span>
+        </div>
       </div>
 
       <div className="tabs">
@@ -106,8 +112,7 @@ export function Turn({
         </button>
       </div>
 
-      {/* 広い画面では「組む場」と「手札」を左右に並べる。
-          縦一列だと札を選ぶたびに句のほうが画面外へ出てしまうため */}
+      {/* 広い画面では「組む場」と「手札」を左右に並べる */}
       <div className="turn-grid">
         <div className="turn-stage">
           {tab === 'compose' ? (
@@ -141,7 +146,7 @@ export function Turn({
             </button>
           ) : (
             <button
-              className="primary wide"
+              className="btn-kansei"
               disabled={!upper || !middle || !lower}
               onClick={() =>
                 dispatch({
@@ -153,14 +158,14 @@ export function Turn({
                 })
               }
             >
-              この句で提出する
+              完成
             </button>
           )}
 
           {s.mode === 'dokudan' && <p className="sub center">親（{activePlayer(s).name}）が選びます</p>}
         </div>
 
-        <div className="turn-side">
+        <div className="turn-side hand-tray">
           <div className="label-mark">手札</div>
           {/* 5音と7音を1行に混ぜ、下端を揃える。背の差がそのまま扇の抑揚になる */}
           <div className="hand">

@@ -24,7 +24,7 @@
   --indigo: #2b384a;        /* 藍墨色 */
   --indigo-soft: #44546a;
   --vermilion-bright: #df3e2e;
-  --outline: #c8c2b5;
+  --outline: #1a1a1c;
   --rule: var(--border-washi);
   --gold: #b58d3d;          /* 落ち着いた金茶色 */
 
@@ -34,7 +34,7 @@
 
   /* 紙の質感の陰影 */
   --lift: 0 2px 6px rgba(26, 26, 28, 0.06), 0 1px 2px rgba(26, 26, 28, 0.04);
-  --lift-card: 0 4px 12px rgba(26, 26, 28, 0.08), 0 1px 3px rgba(26, 26, 28, 0.05);
+  --lift-card: 0 4px 12px rgba(26, 26, 28, 0.09), 0 1px 3px rgba(26, 26, 28, 0.05);
   --lift-hanko: 0 3px 8px rgba(200, 57, 43, 0.22);
 }
 
@@ -51,7 +51,7 @@ body {
   -webkit-text-size-adjust: 100%;
   background-color: var(--bg-base);
   background-attachment: fixed;
-  /* 微細な和紙風ドット・ノイズパターン */
+  /* 和紙風質感ノイズパターン */
   background-image:
     radial-gradient(var(--border-washi) 1px, transparent 0),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23f)' opacity='0.035'/%3E%3C/svg%3E");
@@ -64,23 +64,23 @@ body {
   text-orientation: upright;
 }
 
-/* 舞台・ステージ（文字を読みやすくする和纸パネル） */
+/* ステージ */
 .stage {
   background: var(--card-bg);
-  border: 1px solid var(--border-washi);
-  border-radius: 4px;
+  border: 1px solid var(--sumi);
+  border-radius: 2px;
   padding: 16px 18px;
   box-shadow: var(--lift);
 }
 
 #root {
-  max-width: 560px;
+  max-width: 640px;
   margin: 0 auto;
-  padding: 20px 16px calc(24px + env(safe-area-inset-bottom));
+  padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 h1 {
@@ -90,11 +90,11 @@ h1 {
   letter-spacing: 0.24em;
   text-align: center;
   color: var(--sumi);
-  margin: 20px 0 4px;
+  margin: 16px 0 4px;
 }
 
 h2 {
-  font-family: var(--font-ui);
+  font-family: var(--font-poem);
   font-size: 22px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -121,24 +121,23 @@ h3 {
 .row { display: flex; gap: 10px; align-items: center; }
 .col { display: flex; flex-direction: column; gap: 12px; }
 
-/* ── 和モダンのボタン（和紙札・印章風） ── */
+/* ── ボタン ── */
 button {
-  font-family: var(--font-ui);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  font-family: var(--font-poem);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   color: var(--sumi);
   background: var(--card-bg);
-  border: 1px solid var(--border-washi);
-  border-radius: 4px;
-  padding: 13px 18px;
+  border: 1px solid var(--sumi);
+  border-radius: 1px;
+  padding: 11px 18px;
   cursor: pointer;
   box-shadow: var(--lift);
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease, border-color 0.15s ease;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease;
 }
 button:hover:not(:disabled) {
   background: #ffffff;
-  border-color: var(--outline);
   box-shadow: var(--lift-card);
 }
 button:active:not(:disabled) {
@@ -151,17 +150,17 @@ button:disabled {
   box-shadow: none;
 }
 button.primary {
-  background: var(--vermilion);
-  border-color: var(--vermilion);
-  color: #ffffff;
+  background: var(--card-bg);
+  border: 2px solid var(--sumi);
+  color: var(--sumi);
   font-size: 16px;
   font-weight: 700;
-  padding: 16px;
-  box-shadow: var(--lift-hanko);
+  padding: 14px;
+  box-shadow: var(--lift-card);
 }
 button.primary:hover:not(:disabled) {
-  background: var(--vermilion-bright);
-  border-color: var(--vermilion-bright);
+  border-color: var(--vermilion);
+  color: var(--vermilion);
 }
 button.ghost {
   background: transparent;
@@ -170,9 +169,31 @@ button.ghost {
 }
 button.ghost:hover:not(:disabled) {
   background: rgba(252, 251, 250, 0.7);
-  border-color: var(--outline);
+  border-color: var(--sumi);
 }
 button.wide { width: 100%; }
+
+/* 完成（提出）二重枠ボタン (画像デザイン再現) */
+button.btn-kansei {
+  align-self: center;
+  font-family: var(--font-poem);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: var(--sumi);
+  background: var(--card-bg);
+  border: 1px solid var(--sumi);
+  outline: 2px solid var(--card-bg);
+  box-shadow: 0 0 0 3px var(--sumi), var(--lift-card);
+  padding: 10px 36px;
+  margin: 12px 0;
+  transition: transform 0.12s, color 0.15s, border-color 0.15s;
+}
+button.btn-kansei:hover:not(:disabled) {
+  color: var(--vermilion);
+  border-color: var(--vermilion);
+  transform: translateY(-2px);
+}
 
 input[type='text'] {
   font-family: var(--font-poem);
@@ -182,7 +203,7 @@ input[type='text'] {
   border: none;
   border-bottom: 1.5px solid var(--sumi);
   border-radius: 0;
-  padding: 10px 2px;
+  padding: 8px 4px;
   width: 100%;
 }
 input[type='text']:focus {
@@ -190,70 +211,85 @@ input[type='text']:focus {
   border-bottom-color: var(--vermilion);
 }
 
-/* ── 短冊（かるた）カード ── */
+/* ── 二重台紙かるた札 (画像デザイン完全再現) ── */
 .card, .card-tanzaku {
   position: relative;
   writing-mode: horizontal-tb;
   background: var(--card-bg);
   color: var(--sumi);
   border: 1px solid var(--border-washi);
-  border-radius: 4px;
+  border-radius: 1px;
   box-shadow: var(--lift-card);
-  width: 62px;
-  height: 146px;
-  padding: 10px 5px;
+  width: 66px;
+  height: 156px;
+  padding: 12px 5px 22px;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  overflow: hidden;
+  overflow: visible;
   cursor: pointer;
   user-select: none;
   flex-shrink: 0;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.15s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
-/* うっすら朱色/松葉色の細い枠線（インセットフレーム） */
+/* 裏の台紙（朱色・松葉色の台紙が背後にずれて見える表現） */
+.card::before, .card-tanzaku::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--vermilion);
+  border-radius: 1px;
+  transform: translate(-3px, 3px);
+  transition: transform 0.18s ease;
+}
+.card.m7::before, .card-tanzaku.m7::before {
+  background: var(--matsuba);
+  transform: translate(3px, 3px);
+}
+
+/* インセット内枠線 */
 .card::after, .card-tanzaku::after {
   content: '';
   position: absolute;
   inset: 3px;
-  border: 1px solid rgba(200, 57, 43, 0.35); /* 朱色のインセットフレーム */
-  border-radius: 2px;
+  border: 1px solid rgba(200, 57, 43, 0.4);
   pointer-events: none;
 }
-
-/* 7音札は縦に長く、松葉色フレーム */
-.card.m7, .card-tanzaku.m7 {
-  height: 196px;
-}
 .card.m7::after, .card-tanzaku.m7::after {
-  border-color: rgba(45, 90, 39, 0.35); /* 松葉色のインセットフレーム */
+  border-color: rgba(45, 90, 39, 0.4);
 }
 
-/* かるたのゆらぎ（わずかな傾き） */
-.hand .card:nth-child(odd), .discard-pile .card:nth-child(odd) { transform: rotate(-0.8deg); }
-.hand .card:nth-child(even), .discard-pile .card:nth-child(even) { transform: rotate(1deg); }
+.card.m7, .card-tanzaku.m7 {
+  height: 206px;
+}
+
+/* かるたの物理的ゆらぎ（わずかな傾き） */
+.hand .card:nth-child(odd), .discard-pile .card:nth-child(odd) { transform: rotate(-1deg); }
+.hand .card:nth-child(even), .discard-pile .card:nth-child(even) { transform: rotate(0.8deg); }
 .hand .card:nth-child(3n), .discard-pile .card:nth-child(3n) { transform: rotate(-1.2deg); }
 .hand .card:nth-child(5n), .discard-pile .card:nth-child(5n) { transform: rotate(0.6deg); }
 
 .card:hover {
-  transform: translateY(-4px) rotate(0deg) !important;
-  box-shadow: 0 8px 18px rgba(26, 26, 28, 0.12);
-  border-color: var(--outline);
+  transform: translateY(-5px) rotate(0deg) !important;
+  box-shadow: 0 10px 20px rgba(26, 26, 28, 0.14);
 }
-.card:active {
-  transform: translateY(1px) rotate(0deg) !important;
-  box-shadow: var(--lift);
+.card:hover::before {
+  transform: translate(-4px, 5px);
+}
+.card.m7:hover::before {
+  transform: translate(4px, 5px);
 }
 
 .card .text {
-  --box: 122px;
+  --box: 128px;
   writing-mode: vertical-rl;
   text-orientation: upright;
   font-family: var(--font-poem);
-  font-size: min(19px, calc(var(--box) / (var(--len, 5) * 1.08)));
+  font-size: min(20px, calc(var(--box) / (var(--len, 5) * 1.08)));
   font-weight: 600;
   letter-spacing: 0.08em;
   line-height: 1.1;
@@ -270,38 +306,117 @@ input[type='text']:focus {
   align-self: flex-start;
   margin-top: 1px;
 }
-.card.m7 .text { --box: 172px; font-size: min(18px, calc(var(--box) / (var(--len, 7) * 1.08))); }
+.card.m7 .text { --box: 178px; font-size: min(19px, calc(var(--box) / (var(--len, 7) * 1.08))); }
+
+/* 右下の音数（五/七）菱形バッジ (画像デザイン再現) */
+.mora-badge {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 15px;
+  height: 15px;
+  background: var(--vermilion);
+  color: #ffffff;
+  font-family: var(--font-poem);
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  line-height: 1;
+  z-index: 2;
+}
+.card.m7 .mora-badge {
+  background: var(--matsuba);
+}
 
 .card.selected {
-  border-color: var(--vermilion);
-  box-shadow: 0 0 0 1.5px var(--vermilion), var(--lift-card);
-  transform: translateY(-6px) rotate(0deg) !important;
+  transform: translateY(-8px) rotate(0deg) !important;
+  box-shadow: 0 12px 24px rgba(200, 57, 43, 0.2), var(--lift-card);
 }
-.card.selected::after {
-  border-color: var(--vermilion);
+.card.selected::before {
+  transform: translate(-5px, 6px);
 }
 
 .card.discarding {
   opacity: 0.45;
   border-style: dashed;
-  border-color: var(--vermilion);
 }
 .card.static { cursor: default; }
 .card.static:hover { transform: none !important; box-shadow: var(--lift-card); }
+.card.static:hover::before { transform: translate(-3px, 3px); }
+
+/* ── 手札トレイ (画像デザイン下部の暗色・木目表現) ── */
+.hand-tray {
+  background: #27201a;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='80' height='80' filter='url(%23f)' opacity='0.08'/%3E%3C/svg%3E");
+  border: 1px solid #1a1511;
+  border-radius: 4px;
+  padding: 16px 12px 18px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.hand-tray .label-mark {
+  color: #e5dec9;
+}
+.hand-tray .label-mark::before {
+  background: var(--vermilion);
+}
 
 .hand {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
   justify-content: center;
   align-items: flex-end;
-  padding: 4px;
+  padding: 8px 4px 4px;
+}
+
+/* ── ヘッダーバー (画像デザイン上部再現) ── */
+.hdr-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0 10px;
+  border-bottom: 1.5px solid var(--border-washi);
+}
+.hdr-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hdr-badge {
+  font-family: var(--font-poem);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sumi);
+  background: var(--card-bg);
+  border: 1px solid var(--sumi);
+  padding: 4px 12px;
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+}
+.hdr-badge.on {
+  border-color: var(--matsuba);
+  color: var(--matsuba);
+}
+.hdr-title {
+  font-family: var(--font-poem);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--sumi);
+  text-align: center;
+  white-space: nowrap;
 }
 
 .panel {
   background: var(--paper-panel);
-  border: 1px solid var(--border-washi);
-  border-radius: 4px;
+  border: 1px solid var(--sumi);
+  border-radius: 2px;
   padding: 16px;
   box-shadow: var(--lift);
 }
@@ -329,8 +444,8 @@ input[type='text']:focus {
   background: var(--card-bg);
   color: var(--sumi);
   border: 2px solid var(--sumi);
-  border-radius: 4px;
-  padding: 22px 20px 16px;
+  border-radius: 2px;
+  padding: 24px 22px 18px;
   box-shadow: var(--lift-card);
   position: relative;
   display: inline-flex;
@@ -338,21 +453,18 @@ input[type='text']:focus {
   align-items: center;
   gap: 14px;
   align-self: center;
-  transition: transform 0.15s ease, border-color 0.12s ease, box-shadow 0.15s ease;
+  transition: transform 0.15s ease, border-color 0.12s ease;
 }
-
-/* 句の短冊インセットフレーム */
 .haiku::after {
   content: '';
   position: absolute;
   inset: 5px;
-  border: 1px solid rgba(200, 57, 43, 0.3);
-  border-radius: 2px;
+  border: 1px solid rgba(200, 57, 43, 0.35);
   pointer-events: none;
 }
 
 .board > .haiku { align-self: flex-start; }
-.board > .haiku:nth-child(odd) { transform: rotate(-0.6deg); }
+.board > .haiku:nth-child(odd) { transform: rotate(-0.8deg); }
 .board > .haiku:nth-child(even) { transform: rotate(0.8deg); }
 
 .haiku.pickable { cursor: pointer; }
@@ -392,7 +504,6 @@ input[type='text']:focus {
   align-items: flex-start;
 }
 
-/* 選ばれた最優秀句（金の縁と朱の強調） */
 .haiku.won {
   border-width: 2.5px;
   border-color: var(--vermilion);
@@ -414,7 +525,7 @@ input[type='text']:focus {
 .haiku.lost .haiku-body { font-size: 19px; min-height: 210px; }
 .haiku.lost .author { font-size: 10px; }
 
-/* 判子・落款（朱印） */
+/* 判子・落款 */
 .hanko {
   position: absolute;
   left: -20px;
@@ -424,7 +535,7 @@ input[type='text']:focus {
   display: grid;
   place-items: center;
   border: 3px solid var(--vermilion);
-  border-radius: 4px;
+  border-radius: 2px;
   color: var(--vermilion);
   background: rgba(252, 251, 250, 0.95);
   font-family: var(--font-poem);
@@ -536,10 +647,10 @@ input[type='text']:focus {
   position: relative;
   writing-mode: vertical-rl;
   text-orientation: upright;
-  width: 62px;
-  height: 146px;
-  border: 1.5px dashed var(--border-washi);
-  border-radius: 4px;
+  width: 66px;
+  height: 156px;
+  border: 1.5px dashed var(--sumi);
+  border-radius: 2px;
   background: rgba(252, 251, 250, 0.5);
   display: flex;
   align-items: center;
@@ -551,25 +662,36 @@ input[type='text']:focus {
   letter-spacing: 0.08em;
   color: var(--sumi);
   white-space: nowrap;
-  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s, background-color 0.15s;
 }
-.slot.tall { height: 196px; }
+.slot.tall { height: 206px; }
 .slot.filled {
   background: var(--card-bg);
   border: 1px solid var(--border-washi);
   box-shadow: var(--lift-card);
 }
+.slot.filled::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--vermilion);
+  transform: translate(-3px, 3px);
+}
+.slot.tall.filled::before {
+  background: var(--matsuba);
+  transform: translate(3px, 3px);
+}
 .slot.filled::after {
   content: '';
   position: absolute;
   inset: 3px;
-  border: 1px solid rgba(200, 57, 43, 0.35);
-  border-radius: 2px;
-  pointer-events: none;
+  border: 1px solid rgba(200, 57, 43, 0.4);
 }
 .slot.tall.filled::after {
-  border-color: rgba(45, 90, 39, 0.35);
+  border-color: rgba(45, 90, 39, 0.4);
 }
+
 .slot .hint {
   writing-mode: horizontal-tb;
   font-family: var(--font-ui);
@@ -585,7 +707,7 @@ input[type='text']:focus {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
-  border-bottom: 1.5px solid var(--border-washi);
+  border-bottom: 1.5px solid var(--sumi);
 }
 .tabs button {
   background: transparent;
@@ -593,7 +715,7 @@ input[type='text']:focus {
   border-bottom: 2.5px solid transparent;
   border-radius: 0;
   box-shadow: none;
-  padding: 11px;
+  padding: 10px;
   color: var(--sumi-faint);
 }
 .tabs button:hover { background: rgba(252, 251, 250, 0.6); }
@@ -644,7 +766,7 @@ input[type='range']::-webkit-slider-thumb {
   margin-top: -11px;
   border-radius: 50%;
   background: var(--vermilion);
-  border: 3px solid var(--card-bg);
+  border: 2px solid var(--card-bg);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   cursor: grab;
 }
@@ -684,8 +806,8 @@ tr.winner td {
   font-size: 10px;
   font-weight: 700;
   padding: 4px 10px;
-  border-radius: 3px;
-  border: 1px solid var(--border-washi);
+  border-radius: 2px;
+  border: 1px solid var(--sumi);
   color: var(--sumi-faint);
   letter-spacing: 0.1em;
   white-space: nowrap;
@@ -693,27 +815,33 @@ tr.winner td {
 .badge.on { border-color: var(--matsuba); color: var(--matsuba); }
 .badge.r18 { border-color: var(--vermilion); color: var(--vermilion); }
 
+/* ── ロビー・お品書き風レイアウト ── */
 .deck-option {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 13px;
-  border: 1px solid var(--border-washi);
-  border-radius: 4px;
+  padding: 14px;
+  border: 1px solid var(--sumi);
+  border-radius: 2px;
   background: var(--card-bg);
   cursor: pointer;
-  transition: border-color 0.12s, background-color 0.12s;
+  box-shadow: var(--lift);
+  transition: border-color 0.12s, background-color 0.12s, transform 0.12s;
+}
+.deck-option:hover {
+  transform: translateY(-2px);
+  border-color: var(--vermilion);
 }
 .deck-option.on {
   border-color: var(--vermilion);
-  background: #ffffff;
+  box-shadow: 2px 2px 0 var(--vermilion);
 }
-.deck-option.locked { opacity: 0.72; cursor: default; }
+.deck-option.locked { opacity: 0.8; cursor: default; transform: none; }
 .deck-option .check {
   width: 21px;
   height: 21px;
-  border-radius: 3px;
-  border: 1px solid var(--border-washi);
+  border-radius: 1px;
+  border: 1px solid var(--sumi);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -742,8 +870,8 @@ tr.winner td {
 
 .invite {
   background: var(--paper-sunk);
-  border: 1px solid var(--border-washi);
-  border-radius: 4px;
+  border: 1px solid var(--sumi);
+  border-radius: 2px;
   padding: 11px;
   font-family: ui-monospace, monospace;
   font-size: 12px;
@@ -765,7 +893,7 @@ tr.winner td {
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
-  margin: -6px 0 2px;
+  margin: -4px 0 2px;
 }
 .timer-track {
   position: relative;
@@ -794,16 +922,16 @@ tr.winner td {
 .timer.urgent .timer-bar { background: var(--vermilion); opacity: 1; }
 .timer.urgent .timer-label { color: var(--vermilion); }
 
-/* 見出しの朱のアクセント線 */
+/* アクセント見出し */
 .label-mark {
   display: flex;
   align-items: center;
   gap: 9px;
-  font-family: var(--font-ui);
-  font-size: 11px;
+  font-family: var(--font-poem);
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.16em;
-  color: var(--sumi-faint);
+  color: var(--sumi);
 }
 .label-mark::before {
   content: '';
@@ -893,7 +1021,7 @@ tr.winner td {
   color: var(--sumi);
   background: var(--card-bg);
   border: 2px solid var(--sumi);
-  border-radius: 4px;
+  border-radius: 2px;
   padding: 26px 20px;
   box-shadow: var(--lift-card);
   position: relative;
@@ -903,7 +1031,6 @@ tr.winner td {
   position: absolute;
   inset: 5px;
   border: 1px solid rgba(200, 57, 43, 0.4);
-  border-radius: 2px;
   pointer-events: none;
 }
 
@@ -948,7 +1075,7 @@ tr.winner td {
   position: relative;
   background: var(--card-bg);
   border: 2px solid var(--sumi);
-  border-radius: 4px;
+  border-radius: 2px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
   padding: 40px 52px 30px;
   text-align: center;
@@ -1049,12 +1176,12 @@ tr.winner td {
   h2 { font-size: 28px; }
   h3 { font-size: 14px; }
   .sub { font-size: 15px; }
-  button { font-size: 16px; padding: 15px 22px; }
+  button { font-size: 16px; padding: 14px 22px; }
   .chip-btn { font-size: 14px; padding: 10px 20px; }
   table { font-size: 17px; }
   th { font-size: 12px; }
   .pill { font-size: 13px; padding: 7px 18px; }
-  .label-mark { font-size: 13px; }
+  .label-mark { font-size: 14px; }
   .badge { font-size: 12px; }
   .invite { font-size: 14px; }
   .timer-label { font-size: 13px; }
@@ -1099,18 +1226,20 @@ tr.winner td {
     grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 10px 16px;
   }
-  .lobby-grid .deck-option { padding: 10px 12px; gap: 10px; }
+  .lobby-grid .deck-option { padding: 12px 14px; gap: 10px; }
   .lobby-grid .deck-option .sub { font-size: 13px; line-height: 1.5; }
-  .lobby-grid .panel { padding: 14px; }
-  .lobby-grid .panel.col { gap: 10px; }
+  .lobby-grid .panel { padding: 16px; }
+  .lobby-grid .panel.col { gap: 12px; }
 
-  .card, .card-tanzaku { width: 76px; height: 178px; padding: 11px 6px; }
-  .card.m7, .card-tanzaku.m7 { height: 238px; }
-  .card .text { --box: 154px; font-size: min(23px, calc(var(--box) / (var(--len, 5) * 1.08))); }
-  .card.m7 .text { --box: 214px; font-size: min(22px, calc(var(--box) / (var(--len, 7) * 1.08))); }
+  .card, .card-tanzaku { width: 80px; height: 188px; padding: 14px 6px 26px; }
+  .card.m7, .card-tanzaku.m7 { height: 248px; }
+  .card .text { --box: 160px; font-size: min(24px, calc(var(--box) / (var(--len, 5) * 1.08))); }
+  .card.m7 .text { --box: 220px; font-size: min(23px, calc(var(--box) / (var(--len, 7) * 1.08))); }
   .card .reading { font-size: 11px; }
-  .slot { width: 76px; height: 178px; font-size: 23px; }
-  .slot.tall { height: 238px; }
+  .mora-badge { width: 17px; height: 17px; font-size: 10px; right: 5px; bottom: 5px; }
+
+  .slot { width: 80px; height: 188px; font-size: 24px; }
+  .slot.tall { height: 248px; }
   .slot .hint { font-size: 12px; }
   .slot-mora { font-size: 32px; }
   .slots { gap: 22px; }
