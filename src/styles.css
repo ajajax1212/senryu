@@ -1,14 +1,13 @@
 /*
- * 「高級和モダン・現代かるた」デザインシステム
+ * 「高級和モダン・現代かるた」デザインシステム (可読性＆高コントラスト最適化版)
  * 伝統色：濃墨（Sumi Charcoal）、生成り和紙（Washi）、本朱（Crimson Red）、松葉（Pine Green）、金箔（Gold Leaf）
  */
 :root {
   /* 伝統色カラーパレット */
   --bg-base: #121518;       /* 濃墨 (Dark Sumi Charcoal) */
   --bg-pattern: #181c20;    /* 墨色グラデーション層 */
-  --card-bg: #f9f7f2;       /* 高級越前和紙 */
-  --card-bg-subtle: #f2efe4;/* 和紙パネル */
-  --text-sumi: #1c1c1e;     /* 文字用 墨色 */
+  --card-bg: #fcfbfa;       /* 高級越前和紙（純白生成り） */
+  --text-sumi: #1a1a1c;     /* 絶対墨色（白地カード内文字用） */
   --text-washi: #f5f2e9;    /* ダーク背景用 和紙ホワイト */
   --text-washi-muted: #b5b0a3; /* 落ち着いた和紙グレー */
   
@@ -23,17 +22,16 @@
   --gold-glow: rgba(198, 160, 82, 0.25);
   
   --border-washi: rgba(245, 242, 233, 0.15);
-  --border-gold: rgba(198, 160, 82, 0.3);
-  --border-dark: #2a2e33;
+  --border-gold: rgba(198, 160, 82, 0.35);
 
   /* フォント定義 */
   --font-poem: 'Shippori Mincho', 'Yu Mincho', serif;
   --font-ui: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
 
-  /* 高級感ある陰影（3D Lift） */
+  /* 高級感ある陰影 */
   --lift: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --lift-card: 0 8px 20px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.2);
-  --lift-card-hover: 0 16px 32px rgba(0, 0, 0, 0.5), 0 0 16px var(--gold-glow);
+  --lift-card: 0 6px 18px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.15);
+  --lift-card-hover: 0 14px 28px rgba(0, 0, 0, 0.45), 0 0 16px var(--gold-glow);
   --lift-hanko: 0 4px 12px rgba(197, 61, 45, 0.4);
 }
 
@@ -193,7 +191,7 @@ button.btn-kansei {
   font-size: 19px;
   font-weight: 700;
   letter-spacing: 0.35em;
-  color: var(--card-bg);
+  color: #ffffff;
   background: linear-gradient(135deg, #d34333, #9e2a1d);
   border: 1px solid #e86354;
   border-radius: 4px;
@@ -225,13 +223,14 @@ input[type='text']:focus {
   box-shadow: 0 0 10px var(--gold-glow);
 }
 
-/* ── 洗練された和紙かるた札 (Tanzaku Card) ── */
+/* ── 洗練された和紙かるた札 (Tanzaku Card) 可読性最優先デザイン ── */
 .card, .card-tanzaku {
   position: relative;
   writing-mode: horizontal-tb;
-  background: var(--card-bg) !important;
-  color: var(--text-sumi) !important;
-  border: 1px solid var(--gold-dark);
+  background: #fcfbfa !important; /* 純粋な白地生成り和紙 */
+  color: #1a1a1c !important;     /* 文字色は絶対濃墨色 */
+  border: 1px solid #d4cbb8;
+  border-top: 3.5px solid var(--vermilion); /* 5音は上枠に朱色ライン */
   border-radius: 3px;
   box-shadow: var(--lift-card);
   width: 78px;
@@ -249,54 +248,35 @@ input[type='text']:focus {
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* 越前和紙の繊維テクスチャ風オーバーレイ */
-.card::after, .card-tanzaku::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 2px;
-  pointer-events: none;
-  background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 60%);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-}
-
 .card.m7, .card-tanzaku.m7 {
+  border-top-color: var(--matsuba); /* 7音は上枠に松葉色ライン */
   height: 228px;
 }
 
-/* 裏張り（台紙）の和風重厚グラデーション影 */
+/* 派手な裏張り赤・緑ベタ塗りを廃止し、スッキリした上品な立体シャドウに */
 .card::before, .card-tanzaku::before {
   content: '';
   position: absolute;
-  inset: -1px;
+  inset: 0;
   z-index: -1;
-  background: linear-gradient(145deg, #c53d2d, #8f2619);
+  background: #eae5d7;
   border-radius: 3px;
-  transform: translate(-4px, 5px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transform: translate(-2px, 3px);
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .card.m7::before, .card-tanzaku.m7::before {
-  background: linear-gradient(145deg, #2d5a37, #1b3b22);
-  transform: translate(4px, 5px);
+  transform: translate(2px, 3px);
 }
 
-/* かるたのゆらぎ（静かな傾き） */
-.hand .card:nth-child(odd), .discard-pile .card:nth-child(odd) { transform: rotate(-1.5deg); }
-.hand .card:nth-child(even), .discard-pile .card:nth-child(even) { transform: rotate(1.2deg); }
-.hand .card:nth-child(3n), .discard-pile .card:nth-child(3n) { transform: rotate(-0.8deg); }
-.hand .card:nth-child(5n), .discard-pile .card:nth-child(5n) { transform: rotate(1.8deg); }
+/* かるたのゆらぎ */
+.hand .card:nth-child(odd), .discard-pile .card:nth-child(odd) { transform: rotate(-1.2deg); }
+.hand .card:nth-child(even), .discard-pile .card:nth-child(even) { transform: rotate(1deg); }
+.hand .card:nth-child(3n), .discard-pile .card:nth-child(3n) { transform: rotate(-0.6deg); }
 
 .card:hover {
-  transform: translateY(-10px) rotate(0deg) !important;
+  transform: translateY(-8px) rotate(0deg) !important;
   box-shadow: var(--lift-card-hover);
   z-index: 10;
-}
-.card:hover::before {
-  transform: translate(-6px, 8px);
-}
-.card.m7:hover::before {
-  transform: translate(6px, 8px);
 }
 
 .card .text {
@@ -305,18 +285,18 @@ input[type='text']:focus {
   text-orientation: upright;
   font-family: var(--font-poem);
   font-size: min(22px, calc(var(--box) / (var(--len, 5) * 1.06)));
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.1em;
   line-height: 1.15;
   white-space: nowrap;
-  color: var(--text-sumi);
+  color: #1a1a1c !important; /* 濃墨色固定 */
 }
 .card .reading {
   writing-mode: vertical-rl;
   text-orientation: upright;
   font-family: var(--font-poem);
   font-size: 10px;
-  color: #636058;
+  color: #55524b !important;
   letter-spacing: 0.04em;
   white-space: nowrap;
   align-self: flex-start;
@@ -332,7 +312,7 @@ input[type='text']:focus {
   width: 18px;
   height: 18px;
   background: var(--vermilion);
-  color: #ffffff;
+  color: #ffffff !important;
   font-family: var(--font-poem);
   font-size: 10px;
   font-weight: 700;
@@ -340,7 +320,7 @@ input[type='text']:focus {
   align-items: center;
   justify-content: center;
   border-radius: 2px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   line-height: 1;
   z-index: 2;
 }
@@ -349,13 +329,10 @@ input[type='text']:focus {
 }
 
 .card.selected {
-  transform: translateY(-14px) rotate(0deg) !important;
-  box-shadow: 0 16px 32px rgba(197, 61, 45, 0.3), var(--lift-card-hover);
+  transform: translateY(-12px) rotate(0deg) !important;
+  box-shadow: 0 12px 28px rgba(197, 61, 45, 0.25), var(--lift-card-hover);
   border-color: var(--vermilion);
   z-index: 20;
-}
-.card.selected::before {
-  transform: translate(-7px, 10px);
 }
 
 .card.discarding {
@@ -365,42 +342,32 @@ input[type='text']:focus {
 }
 .card.static { cursor: default; }
 .card.static:hover { transform: none !important; box-shadow: var(--lift-card); }
-.card.static:hover::before { transform: translate(-4px, 5px); }
 
-/* ── 手札トレイ (漆黒の重厚な和風お盆) ── */
+/* ── 手札トレイ (漆黒のお盆) ── */
 .hand-tray {
   width: 100%;
   background: linear-gradient(180deg, #1e2226 0%, #14171a 100%);
   border: 1px solid var(--border-gold);
   border-top: 2px solid var(--gold);
   border-radius: 8px;
-  padding: 22px 18px 28px;
+  padding: 20px 16px 24px;
   box-shadow: inset 0 4px 20px rgba(0, 0, 0, 0.8), 0 12px 32px rgba(0, 0, 0, 0.5);
   margin-top: 14px;
   position: relative;
 }
-.hand-tray::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 20px;
-  right: 20px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--gold-light), transparent);
-}
 .hand-tray .label-mark {
   color: var(--gold-light);
   font-size: 14px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .hand {
   display: flex;
-  gap: 16px;
+  gap: 14px;
   flex-wrap: wrap;
   justify-content: center;
   align-items: flex-end;
-  padding: 12px 6px 8px;
+  padding: 10px 4px 6px;
 }
 
 /* ── ヘッダーバー ── */
@@ -470,11 +437,12 @@ input[type='text']:focus {
   letter-spacing: 0.06em;
 }
 
-/* ── 川柳（完成句）の掛け軸・かるた表示 ── */
+/* ── 川柳（完成句・提出句）の掛け軸・かるた表示 (白地×墨文字確定) ── */
 .haiku {
-  background: var(--card-bg);
-  color: var(--text-sumi);
+  background: #fcfbfa !important;  /* 白地生成り和紙 */
+  color: #1a1a1c !important;       /* 濃墨文字色絶対固定 */
   border: 1px solid var(--gold-dark);
+  border-top: 4px solid var(--vermilion);
   border-radius: 3px;
   padding: 26px 24px 20px;
   box-shadow: var(--lift-card);
@@ -489,12 +457,11 @@ input[type='text']:focus {
 .haiku::before {
   content: '';
   position: absolute;
-  inset: -1px;
+  inset: 0;
   z-index: -1;
-  background: linear-gradient(145deg, #c53d2d, #8f2619);
+  background: #eae5d7;
   border-radius: 3px;
-  transform: translate(-4px, 5px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transform: translate(-3px, 4px);
 }
 .haiku::after {
   content: '';
@@ -505,8 +472,8 @@ input[type='text']:focus {
 }
 
 .board > .haiku { align-self: flex-start; }
-.board > .haiku:nth-child(odd) { transform: rotate(-1.2deg); }
-.board > .haiku:nth-child(even) { transform: rotate(1.2deg); }
+.board > .haiku:nth-child(odd) { transform: rotate(-1deg); }
+.board > .haiku:nth-child(even) { transform: rotate(1deg); }
 
 .haiku.pickable { cursor: pointer; }
 .haiku.pickable:hover {
@@ -520,11 +487,15 @@ input[type='text']:focus {
   text-orientation: upright;
   font-family: var(--font-poem);
   font-size: 27px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.16em;
   min-height: 310px;
+  color: #1a1a1c !important; /* 墨文字固定 */
 }
-.haiku-body > div { white-space: nowrap; }
+.haiku-body > div {
+  white-space: nowrap;
+  color: #1a1a1c !important; /* 子要素も墨文字絶対固定 */
+}
 .haiku-body > div:not(:last-child) { margin-block-end: 24px; }
 
 .haiku .author {
@@ -532,7 +503,7 @@ input[type='text']:focus {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: #4a4740;
+  color: #4a4740 !important;
   white-space: nowrap;
 }
 
@@ -546,22 +517,16 @@ input[type='text']:focus {
 
 .haiku.won {
   border: 2px solid var(--gold);
+  border-top: 4px solid var(--gold);
   box-shadow: 0 12px 32px rgba(198, 160, 82, 0.3), 0 0 20px var(--gold-glow);
   transform: rotate(0deg) !important;
 }
-.haiku.won::before {
-  background: linear-gradient(145deg, var(--gold), var(--gold-dark));
-}
-.haiku.won::after {
-  border-color: var(--gold-light);
-}
-.haiku.won .haiku-body { font-size: 34px; min-height: 360px; }
+.haiku.won .haiku-body, .haiku.won .haiku-body > div { font-size: 34px; min-height: 360px; color: #1a1a1c !important; }
 
 .haiku.lost {
-  opacity: 0.65;
-  filter: grayscale(0.2);
+  opacity: 0.75;
 }
-.haiku.lost .haiku-body { font-size: 20px; min-height: 220px; }
+.haiku.lost .haiku-body, .haiku.lost .haiku-body > div { font-size: 20px; min-height: 220px; color: #1a1a1c !important; }
 
 /* 落款・印章（ハンコ） */
 .hanko {
@@ -574,8 +539,8 @@ input[type='text']:focus {
   place-items: center;
   border: 3px solid var(--vermilion);
   border-radius: 3px;
-  color: var(--vermilion);
-  background: rgba(249, 247, 242, 0.95);
+  color: var(--vermilion) !important;
+  background: rgba(252, 251, 250, 0.95);
   font-family: var(--font-poem);
   font-size: 26px;
   font-weight: 700;
@@ -615,7 +580,7 @@ input[type='text']:focus {
   border: 2px solid var(--gold);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px var(--gold-glow);
 }
-.reveal .haiku-body { font-size: 40px; min-height: 400px; }
+.reveal .haiku-body, .reveal .haiku-body > div { font-size: 40px; min-height: 400px; color: #1a1a1c !important; }
 
 .reveal .hanko {
   width: 96px;
@@ -681,7 +646,7 @@ input[type='text']:focus {
   cursor: pointer;
   font-family: var(--font-poem);
   font-size: 21px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--text-washi);
   white-space: nowrap;
@@ -693,22 +658,14 @@ input[type='text']:focus {
   background: rgba(198, 160, 82, 0.08);
 }
 .slot.filled {
-  background: var(--card-bg);
+  background: #fcfbfa !important;  /* 白地生成り和紙 */
+  color: #1a1a1c !important;       /* 濃墨文字絶対固定 */
   border: 1px solid var(--gold-dark);
+  border-top: 3.5px solid var(--vermilion);
   box-shadow: var(--lift-card);
 }
-.slot.filled::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  z-index: -1;
-  background: linear-gradient(145deg, #c53d2d, #8f2619);
-  border-radius: 3px;
-  transform: translate(-4px, 5px);
-}
-.slot.tall.filled::before {
-  background: linear-gradient(145deg, #2d5a37, #1b3b22);
-  transform: translate(4px, 5px);
+.slot.tall.filled {
+  border-top-color: var(--matsuba);
 }
 
 .slot .hint {
@@ -969,7 +926,7 @@ tr.winner td {
   background: var(--gold);
 }
 
-/* ── タイトル画面デザイン（Miyabi Hero） ── */
+/* ── タイトル画面デザイン ── */
 .title-block {
   display: flex;
   flex-direction: column;
@@ -985,10 +942,11 @@ tr.winner td {
   font-size: 52px;
   font-weight: 700;
   letter-spacing: 0.3em;
-  color: var(--text-sumi);
-  background: var(--card-bg);
+  color: #1a1a1c !important;
+  background: #fcfbfa;
   padding: 32px 18px 40px;
   border: 2px solid var(--gold-dark);
+  border-top: 5px solid var(--vermilion);
   border-radius: 4px;
   box-shadow: var(--lift-card-hover);
   transform: rotate(-1.5deg);
@@ -997,11 +955,11 @@ tr.winner td {
 .title-mark::before {
   content: '';
   position: absolute;
-  inset: -1px;
+  inset: 0;
   z-index: -1;
-  background: linear-gradient(145deg, #c53d2d, #8f2619);
+  background: #eae5d7;
   border-radius: 4px;
-  transform: translate(-6px, 8px);
+  transform: translate(-4px, 6px);
 }
 .title-mark::after {
   content: '句';
@@ -1014,8 +972,8 @@ tr.winner td {
   place-items: center;
   border: 2px solid var(--vermilion);
   border-radius: 2px;
-  color: var(--vermilion);
-  background: rgba(249, 247, 242, 0.95);
+  color: var(--vermilion) !important;
+  background: rgba(252, 251, 250, 0.95);
   font-size: 18px;
   font-weight: bold;
   transform: rotate(-10deg);
