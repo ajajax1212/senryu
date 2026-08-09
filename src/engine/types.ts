@@ -35,7 +35,11 @@ export type DiscardedCard = {
 export type GameSettings = {
   /** standard は常に含まれる。spicy は明示的に有効化したときのみ */
   decks: DeckId[];
-  /** 対戦ラウンド数 (1 〜 5 ラウンド) */
+  /**
+   * 対戦ラウンド数（1〜5）。
+   * 1ラウンド = 全員が1回ずつ親（提出者）をやること。
+   * したがって総手番数は rounds × 人数 になる。
+   */
   rounds?: number;
   /** 1ラウンドあたりの交換回数 */
   exchangeLimit: number;
@@ -73,7 +77,8 @@ export type Phase =
   | 'gameover';
 
 export type RoundResult = {
-  round: number;
+  /** 何番目の手番か（0始まり）。1手番 = 1人が親をやる */
+  turn: number;
   mode: Mode;
   submissions: Haiku[];
   winnerId?: string;
@@ -88,7 +93,8 @@ export type GameState = {
   deck5: Card[];
   deck7: Card[];
   discard: DiscardedCard[];
-  round: number;
+  /** 何番目の手番か（0始まり）。ラウンド番号ではない */
+  turn: number;
   activeIndex: number;
   turnQueue: string[];
   phase: Phase;
@@ -124,4 +130,5 @@ export type Action =
       playerId?: string;
       partial?: { upperId?: string; middleId?: string; lowerId?: string };
     }
-  | { type: 'NEXT_ROUND' };
+  /** 次の人の手番へ。1ラウンド分（全員が親を1回）終わっていれば次のラウンドに入る */
+  | { type: 'NEXT_TURN' };

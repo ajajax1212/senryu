@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Action, Card, GameState } from '../engine/types';
-import { activePlayer, playerById, remainingExchanges, totalRounds } from '../engine/reducer';
+import { activePlayer, playerById, remainingExchanges, roundNumber, seatNumber, totalRounds } from '../engine/reducer';
 import { remainingCards } from '../engine/view';
 import { CardView, HaikuView } from './parts';
 
@@ -92,7 +92,10 @@ export function Turn({
       <div className="hdr-bar">
         <div className="hdr-group">
           <span className="hdr-badge">
-            ラウンド {s.round + 1}／{totalRounds(s)}
+            ラウンド {roundNumber(s)}／{totalRounds(s)}
+          </span>
+          <span className="hdr-badge">
+            {seatNumber(s)}人目／{s.players.length}人
           </span>
           <span className="hdr-badge">残り札: {remainingCards(s)}</span>
         </div>

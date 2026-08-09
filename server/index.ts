@@ -77,7 +77,7 @@ function scheduleTimeout(room: Room): void {
         : null;
 
   // 同じ局面で時計を張り替えると、状態が更新されるたびに残り時間が巻き戻ってしまう
-  const key = game && limit ? `${game.round}:${game.phase}` : null;
+  const key = game && limit ? `${game.turn}:${game.phase}` : null;
   if (key === room.timerKey) return;
 
   if (room.timer) clearTimeout(room.timer);
@@ -187,7 +187,7 @@ io.on('connection', (socket) => {
         if (decks) room.decks = ['standard', ...decks.filter((d) => d !== 'standard')];
         if (rounds !== undefined) {
           // クライアントの言い値をそのまま入れない。1〜5以外を通すと
-          // totalRounds がその数を返し、終わらないゲームができてしまう
+          // totalTurns がその数×人数を返し、終わらないゲームができてしまう
           const valid = clampRounds(rounds);
           if (valid === null) return ack?.({ ok: false, error: 'ラウンド数は1〜5で指定してください' });
           room.rounds = valid;
@@ -249,7 +249,7 @@ io.on('connection', (socket) => {
         'playerId' in action ? ({ ...action, playerId } as Action) : action;
 
       // 進行系（次のラウンドへ）はホストだけ。ほかは本人の行動として通す
-      if (owned.type === 'NEXT_ROUND' && !requireHost(room, socket, ack)) return;
+      if (owned.type === 'NEXT_TURN' && !requireHost(room, socket, ack)) return;
       if (owned.type === 'START_GAME' || owned.type === 'TIMEOUT' || owned.type === 'TAKE_SEAT') {
         return ack?.({ ok: false, error: 'この操作はできません' });
       }

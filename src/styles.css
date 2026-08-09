@@ -295,9 +295,24 @@ input[type='text']:focus {
 }
 
 /* ── 1〜5ラウンド選択カードUI ── */
+.deck-option .opt-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+/* 枚数は名前と同じ行に押し込まず、必ず次の行に落とす。
+   同じ行だと「標準5音205／7音200」と地続きに読めてしまう */
+.deck-option .opt-count {
+  flex: 0 0 100%;
+  margin: 2px 0 0;
+  white-space: nowrap;
+}
+
+/* ── 1〜5ラウンド選択カードUI ── */
 .round-selector-row {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
   margin-top: 4px;
 }
@@ -306,7 +321,7 @@ input[type='text']:focus {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 10px 4px;
+  padding: 10px 2px;
   background: rgba(24, 28, 32, 0.8);
   border: 1.5px solid var(--border-gold);
   border-radius: 6px;
@@ -331,6 +346,8 @@ input[type='text']:focus {
   font-family: var(--font-ui);
   font-size: 10px;
   margin-top: 2px;
+  /* 幅が足りないと「ラ／ウ／ン／ド」と1文字ずつ縦に割れる */
+  white-space: nowrap;
 }
 .round-btn.active {
   background: linear-gradient(135deg, var(--gold-dark), var(--gold)) !important;
@@ -1385,18 +1402,23 @@ input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; transform: 
     gap: 18px;
     align-items: start;
   }
+  /*
+   * PCでは2カラム。3カラムまで割ると1列が300px前後になり、
+   * 札の枚数や「ラウンド」の文字が不自然に折り返す。
+   * 背の高い「使う札」だけ右列で2行またがせて縦の無駄を消す。
+   */
   .lb-online {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
       'invite players'
-      'mode rounds'
-      'decks decks';
+      'mode decks'
+      'rounds decks';
   }
   .lb-setup {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
-      'mode rounds'
-      'players decks';
+      'mode players'
+      'rounds decks';
   }
   .lb-invite { grid-area: invite; }
   .lb-players { grid-area: players; }
@@ -1426,15 +1448,3 @@ input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; transform: 
   .hand { gap: 16px; }
 }
 
-@media (min-width: 1000px) {
-  .lb-online {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-areas:
-      'invite mode decks'
-      'players rounds decks';
-  }
-  .lb-setup {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-areas: 'mode rounds players' 'decks decks players';
-  }
-}

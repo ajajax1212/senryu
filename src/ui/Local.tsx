@@ -58,7 +58,7 @@ export function Local({ mode: initialMode, onBack }: { mode: Mode; onBack: () =>
 
   const me = seatedPlayerId(game) ?? game.players[game.activeIndex].id;
   // 手番が変わったら選択を捨てる。key を持たせておけば useEffect でリセットしなくて済む
-  const turnKey = `${game.round}-${me}`;
+  const turnKey = `${game.turn}-${me}`;
   const { key: _key, ...partial } = draft.key === turnKey ? draft : { key: turnKey };
 
   const group = TIMED[game.phase];

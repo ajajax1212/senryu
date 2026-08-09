@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Action, GameState, Haiku } from '../engine/types';
-import { activePlayer, seatedPlayer, totalRounds } from '../engine/reducer';
+import { activePlayer, roundNumber, seatNumber, seatedPlayer, totalRounds } from '../engine/reducer';
 import { Turn, type Draft } from './Turn';
 import { GameOver, Judge, Rate, RoundResult } from './Results';
 
@@ -79,7 +79,7 @@ function roleOf(s: GameState, me: string): { title: string; note: string } | nul
  */
 function RoleAnnounce({ s, me }: { s: GameState; me: string }) {
   const role = roleOf(s, me);
-  const key = role ? `${s.round}:${me}:${role.title}` : null;
+  const key = role ? `${s.turn}:${me}:${role.title}` : null;
   const shown = useRef<string | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -95,7 +95,9 @@ function RoleAnnounce({ s, me }: { s: GameState; me: string }) {
   return (
     <div className="announce" onClick={() => setOpen(false)}>
       <div className="announce-card">
-        <div className="announce-round">第{s.round + 1}ラウンド</div>
+        <div className="announce-round">
+          第{roundNumber(s)}ラウンド ／ {seatNumber(s)}人目
+        </div>
         <div className="announce-title">{role.title}</div>
         <p className="announce-note">{role.note}</p>
         <div className="announce-hint">タップで閉じる</div>
@@ -117,7 +119,7 @@ function Handoff({ s, dispatch }: { s: GameState; dispatch: (a: Action) => void 
   return (
     <div className="handoff">
       <p className="sub">
-        第{s.round + 1}ラウンド ／ 全{totalRounds(s)}ラウンド
+        第{roundNumber(s)}ラウンド ／ 全{totalRounds(s)}ラウンド（{seatNumber(s)}人目 ／ {s.players.length}人）
       </p>
       <div>
         <div className="name">{me.name}</div>

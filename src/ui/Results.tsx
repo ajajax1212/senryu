@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Action, GameState, Haiku } from '../engine/types';
-import { activePlayer, playerById, ranking, totalRounds } from '../engine/reducer';
+import { activePlayer, playerById, ranking, roundNumber, seatNumber, totalTurns } from '../engine/reducer';
 import { gradeFor } from '../engine/types';
 import { HaikuView } from './parts';
 
@@ -122,7 +122,7 @@ export function RoundResult({
 
   if (!r) return null;
   const name = (id: string) => playerById(s, id)?.name ?? '?';
-  const last = s.round + 1 >= totalRounds(s);
+  const last = s.turn + 1 >= totalTurns(s);
 
   return (
     <>
@@ -140,7 +140,10 @@ export function RoundResult({
         </div>
       )}
 
-      <h2>第{s.round + 1}ラウンド 結果</h2>
+      <h2>{activePlayer(s).name} の番 — 結果</h2>
+      <p className="sub center">
+        第{roundNumber(s)}ラウンド ／ {seatNumber(s)}人目 ／ {s.players.length}人
+      </p>
 
       {r.mode === 'dokudan' ? (
         <>
@@ -188,8 +191,8 @@ export function RoundResult({
 
       <div className="grow" />
       {canAdvance ? (
-        <button className="primary wide" onClick={() => dispatch({ type: 'NEXT_ROUND' })}>
-          {last ? '総合結果へ' : `第${s.round + 2}ラウンドへ`}
+        <button className="primary wide" onClick={() => dispatch({ type: 'NEXT_TURN' })}>
+          {last ? '総合結果へ' : '次のプレイヤーに進む'}
         </button>
       ) : (
         <p className="sub center">ホストが次に進めるのを待っています</p>

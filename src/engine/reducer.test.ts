@@ -7,6 +7,9 @@ import {
   shuffledSubmissions,
   canAct,
   totalRounds,
+  totalTurns,
+  roundNumber,
+  seatNumber,
 } from './reducer';
 import { viewFor } from './view';
 import { gradeFor } from './types';
@@ -127,7 +130,7 @@ describe('独断と偏見モード', () => {
       }
       s = apply(s, { type: 'TAKE_SEAT' });
       s = reducer(s, { type: 'JUDGE', playerId: s.players[round].id, index: 0 });
-      s = reducer(s, { type: 'NEXT_ROUND' });
+      s = reducer(s, { type: 'NEXT_TURN' });
     }
     expect(s.phase).toBe('gameover');
   });
@@ -378,7 +381,7 @@ describe('交換', () => {
     s = submitFor(s, 'p0');
     s = reducer(s, { type: 'RATE', playerId: 'p1', score: 50 });
     s = reducer(s, { type: 'RATE', playerId: 'p2', score: 50 });
-    s = reducer(s, { type: 'NEXT_ROUND' });
+    s = reducer(s, { type: 'NEXT_TURN' });
     expect(remainingExchanges(s, 'p0')).toBe(2);
   });
 });
@@ -394,7 +397,7 @@ describe('ラウンド間の補充', () => {
     s = submitFor(s, 'p0');
     s = reducer(s, { type: 'RATE', playerId: 'p1', score: 50 });
     s = reducer(s, { type: 'RATE', playerId: 'p2', score: 50 });
-    s = reducer(s, { type: 'NEXT_ROUND' });
+    s = reducer(s, { type: 'NEXT_TURN' });
 
     const after = s.players[0].hand;
     expect(after.filter((c) => c.mora === 5)).toHaveLength(4);
@@ -514,7 +517,7 @@ describe('最後まで遊ぶ', () => {
     for (let round = 0; round < 3; round++) {
       s = reducer(s, { type: 'TIMEOUT' });          // 全員自動提出
       s = reducer(s, { type: 'JUDGE', playerId: s.players[round].id, index: 0 });
-      s = reducer(s, { type: 'NEXT_ROUND' });
+      s = reducer(s, { type: 'NEXT_TURN' });
     }
     return s;
   }
@@ -525,7 +528,7 @@ describe('最後まで遊ぶ', () => {
     const done = playThrough();
     expect(done.phase).toBe('gameover');
     expect(done.players.some((p) => p.score > 0)).toBe(true);
-    expect(reducer(done, { type: 'NEXT_ROUND' })).toBe(done);
+    expect(reducer(done, { type: 'NEXT_TURN' })).toBe(done);
   });
 });
 
@@ -558,34 +561,75 @@ describe('順位', () => {
 });
 
 describe('対戦ラウンド数', () => {
-  it('指定がなければ人数ぶん回す', () => {
+  /** 1手番ぶん進める（時間切れで全員自動提出 → 親が先頭を選ぶ → 次へ） */
+  function playTurn(s: GameState): GameState {
+    s = reducer(s, { type: 'TIMEOUT' });
+    s = reducer(s, { type: 'JUDGE', playerId: s.players[s.activeIndex].id, index: 0 });
+    return reducer(s, { type: 'NEXT_TURN' });
+  }
+
+  // 1ラウンド = 全員が1回ずつ親をやること。
+  // ここを「1ラウンド = 1人が親をやる」と取り違えると、
+  // 1ラウンドを選んだのに1人だけ親をやって終わってしまう。
+  it('1ラウンドは人数ぶんの手番', () => {
+    const s = start('dokudan', ['あ', 'い', 'う', 'え'], { rounds: 1 });
+    expect(totalRounds(s)).toBe(1);
+    expect(totalTurns(s)).toBe(4);
+  });
+
+  it('指定がなければ1ラウンド（ちょうど一巡）', () => {
     const s = start('dokudan', ['あ', 'い', 'う', 'え']);
-    expect(totalRounds(s)).toBe(4);
+    expect(totalRounds(s)).toBe(1);
+    expect(totalTurns(s)).toBe(4);
   });
 
-  it('指定した回数で終わる', () => {
-    let s = start('dokudan', ['あ', 'い', 'う', 'え'], { rounds: 2, passAndPlay: false });
-    expect(totalRounds(s)).toBe(2);
-    for (let round = 0; round < 2; round++) {
-      expect(s.phase).not.toBe('gameover');
-      s = reducer(s, { type: 'TIMEOUT' });
-      s = reducer(s, { type: 'JUDGE', playerId: s.players[round].id, index: 0 });
-      s = reducer(s, { type: 'NEXT_ROUND' });
-    }
-    expect(s.phase).toBe('gameover');
-  });
-
-  it('人数より多いラウンドでも親が一巡して回り続ける', () => {
-    let s = start('dokudan', ['あ', 'い', 'う'], { rounds: 5, passAndPlay: false });
+  it('1ラウンドを選ぶと全員が親をやって終わる', () => {
+    let s = start('dokudan', ['あ', 'い', 'う'], { rounds: 1, passAndPlay: false });
     const hosts: string[] = [];
-    for (let round = 0; round < 5; round++) {
+    for (let i = 0; i < 3; i++) {
       hosts.push(s.players[s.activeIndex].name);
-      s = reducer(s, { type: 'TIMEOUT' });
-      s = reducer(s, { type: 'JUDGE', playerId: s.players[s.activeIndex].id, index: 0 });
-      s = reducer(s, { type: 'NEXT_ROUND' });
+      expect(s.phase).not.toBe('gameover');
+      s = playTurn(s);
     }
-    expect(hosts).toEqual(['あ', 'い', 'う', 'あ', 'い']);
+    expect(hosts).toEqual(['あ', 'い', 'う']);
     expect(s.phase).toBe('gameover');
+  });
+
+  it('コンテストでも1ラウンドで全員が提出者をやる', () => {
+    let s = start('contest', ['あ', 'い', 'う'], { rounds: 1, passAndPlay: false });
+    expect(totalTurns(s)).toBe(3);
+    const authors: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      authors.push(s.players[s.activeIndex].name);
+      expect(s.phase).not.toBe('gameover');
+      s = reducer(s, { type: 'TIMEOUT' }); // 提出
+      s = reducer(s, { type: 'TIMEOUT' }); // 採点
+      s = reducer(s, { type: 'NEXT_TURN' });
+    }
+    expect(authors).toEqual(['あ', 'い', 'う']);
+    expect(s.phase).toBe('gameover');
+  });
+
+  it('2ラウンドなら親が二巡する', () => {
+    let s = start('dokudan', ['あ', 'い', 'う'], { rounds: 2, passAndPlay: false });
+    expect(totalTurns(s)).toBe(6);
+    const hosts: string[] = [];
+    for (let i = 0; i < 6; i++) {
+      hosts.push(s.players[s.activeIndex].name);
+      s = playTurn(s);
+    }
+    expect(hosts).toEqual(['あ', 'い', 'う', 'あ', 'い', 'う']);
+    expect(s.phase).toBe('gameover');
+  });
+
+  it('ラウンド番号と何人目かが手番から求まる', () => {
+    let s = start('dokudan', ['あ', 'い', 'う'], { rounds: 2, passAndPlay: false });
+    const seen: string[] = [];
+    for (let i = 0; i < 6; i++) {
+      seen.push(`${roundNumber(s)}-${seatNumber(s)}`);
+      s = playTurn(s);
+    }
+    expect(seen).toEqual(['1-1', '1-2', '1-3', '2-1', '2-2', '2-3']);
   });
 });
 
@@ -601,7 +645,7 @@ describe('履歴', () => {
     s = reducer(s, { type: 'JUDGE', playerId: s.players[0].id, index: 0 });
 
     expect(s.history).toHaveLength(1);
-    expect(s.history[0].round).toBe(0);
+    expect(s.history[0].turn).toBe(0);
     expect(s.history[0].winnerId).toBe(winner);
     // 負けた句も残す。総合結果の振り返りで全員ぶん見せられるようにするため
     expect(s.history[0].submissions).toHaveLength(2);
@@ -616,7 +660,7 @@ describe('履歴', () => {
     expect(s.history).toHaveLength(1);
     expect(s.history[0].average).toBe(70);
 
-    s = reducer(s, { type: 'NEXT_ROUND' });
+    s = reducer(s, { type: 'NEXT_TURN' });
     s = submitFor(s, 'p1');
     s = reducer(s, { type: 'RATE', playerId: 'p0', score: 10 });
     s = reducer(s, { type: 'RATE', playerId: 'p2', score: 30 });

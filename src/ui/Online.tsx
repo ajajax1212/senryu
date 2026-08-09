@@ -32,7 +32,7 @@ export function Online({ onBack }: { onBack: () => void }) {
   const { lobby, game, deadline } = room.state;
   if (!game) return <LobbyScreen room={room} lobby={lobby} />;
 
-  const turnKey = `${game.round}-${game.phase}`;
+  const turnKey = `${game.turn}-${game.phase}`;
   const { key: _key, ...partial } = draft.key === turnKey ? draft : { key: turnKey };
 
   return (

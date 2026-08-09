@@ -23,8 +23,31 @@ export function activePlayer(s: GameState): Player {
   return s.players[s.activeIndex];
 }
 
+/**
+ * 対戦ラウンド数。1ラウンド = 全員が1回ずつ親（提出者）をやること。
+ * 指定がなければ1ラウンド（＝ちょうど一巡）。
+ */
 export function totalRounds(s: GameState): number {
-  return s.settings.rounds ?? s.players.length;
+  return s.settings.rounds ?? 1;
+}
+
+/**
+ * 総手番数。1手番 = 1人が親をやる。
+ * 「1ラウンド選んだのに1人だけ親をやって終わった」を防ぐため、
+ * ラウンド数と手番数は必ずここで換算する。
+ */
+export function totalTurns(s: GameState): number {
+  return totalRounds(s) * s.players.length;
+}
+
+/** いま何ラウンド目か（1始まり） */
+export function roundNumber(s: GameState): number {
+  return Math.floor(s.turn / s.players.length) + 1;
+}
+
+/** そのラウンドの何人目か（1始まり） */
+export function seatNumber(s: GameState): number {
+  return (s.turn % s.players.length) + 1;
 }
 
 export function remainingExchanges(s: GameState, playerId: string): number {
@@ -73,9 +96,10 @@ function goto(s: GameState, phase: Phase, turnQueue: string[]): GameState {
   return { ...s, phase: 'handoff', pendingPhase: phase, turnQueue };
 }
 
-function beginRound(s: GameState, round: number): GameState {
+/** 1手番ぶんの準備。親を1つ進めて手番のキューを作る */
+function beginTurn(s: GameState, turn: number): GameState {
   const n = s.players.length;
-  const activeIndex = round % n;
+  const activeIndex = turn % n;
   const queue =
     s.mode === 'contest'
       ? [s.players[activeIndex].id]
@@ -84,7 +108,7 @@ function beginRound(s: GameState, round: number): GameState {
   return goto(
     {
       ...s,
-      round,
+      turn,
       activeIndex,
       submissions: [],
       ratings: {},
@@ -102,7 +126,7 @@ function scoreRound(s: GameState): GameState {
   const average = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 
   const roundResult: RoundResult = {
-    round: s.round,
+    turn: s.turn,
     mode: s.mode,
     submissions: s.submissions,
     ratings: s.ratings,
@@ -187,7 +211,7 @@ function applyJudge(s: GameState, index: number): GameState {
   const chosen = shuffledSubmissions(s)[index];
   if (!chosen) return s;
   const roundResult: RoundResult = {
-    round: s.round,
+    turn: s.turn,
     mode: s.mode,
     submissions: s.submissions,
     winnerId: chosen.authorId,
@@ -241,7 +265,7 @@ export function reducer(state: GameState, action: Action): GameState {
         deck5: pile5,
         deck7: pile7,
         discard: [],
-        round: 0,
+        turn: 0,
         activeIndex: 0,
         turnQueue: [],
         phase: 'setup',
@@ -253,7 +277,7 @@ export function reducer(state: GameState, action: Action): GameState {
         history: [],
         seed,
       };
-      return beginRound(base, 0);
+      return beginTurn(base, 0);
     }
 
     case 'TAKE_SEAT': {
@@ -280,7 +304,7 @@ export function reducer(state: GameState, action: Action): GameState {
       const got = (m: 5 | 7) => captured.filter((c) => c.mora === m).length;
       if (got(5) > need(5) || got(7) > need(7)) return state;
 
-      const rng = makeRng(state.seed + state.round * 100 + (state.exchangesUsed[me.id] ?? 0));
+      const rng = makeRng(state.seed + state.turn * 100 + (state.exchangesUsed[me.id] ?? 0));
       let discard = state.discard.filter((d) => !action.capturedIds.includes(d.card.id));
       discard = [...discard, ...out.map((card) => ({ card, discardedBy: me.id }))];
 
@@ -341,10 +365,10 @@ export function reducer(state: GameState, action: Action): GameState {
       }
     }
 
-    case 'NEXT_ROUND': {
+    case 'NEXT_TURN': {
       if (state.phase !== 'roundResult') return state;
-      const next = state.round + 1;
-      if (next >= totalRounds(state)) {
+      const next = state.turn + 1;
+      if (next >= totalTurns(state)) {
         return { ...state, phase: 'gameover', pendingPhase: null, turnQueue: [] };
       }
 
@@ -364,7 +388,7 @@ export function reducer(state: GameState, action: Action): GameState {
         return { ...p, hand: [...p.hand, ...d5.drawn, ...d7.drawn] };
       });
 
-      return beginRound({ ...state, players, deck5, deck7, discard }, next);
+      return beginTurn({ ...state, players, deck5, deck7, discard }, next);
     }
 
     default:
@@ -374,7 +398,7 @@ export function reducer(state: GameState, action: Action): GameState {
 
 /** 審査画面に出す並び。提出順から作者が割れないようラウンドごとに固定の順で混ぜる */
 export function shuffledSubmissions(s: GameState): Haiku[] {
-  return shuffle(s.submissions, makeRng(s.seed + s.round * 31));
+  return shuffle(s.submissions, makeRng(s.seed + s.turn * 31));
 }
 
 export function ranking(s: GameState): Player[] {
