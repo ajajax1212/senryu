@@ -91,7 +91,7 @@ export function Setup({
 
       <div className="lobby-grid lb-setup">
         <div className="panel col lb-mode">
-          <h3>モード</h3>
+          <h3>ゲームモード</h3>
           {MODES.map((m) => (
             <div
               key={m.id}
@@ -105,18 +105,21 @@ export function Setup({
               </div>
             </div>
           ))}
+        </div>
 
-          {/* ラウンド数選択 (1 〜 5 ラウンド) */}
-          <h3 style={{ marginTop: 12 }}>対戦ラウンド数</h3>
-          <div className="row" style={{ gap: 6 }}>
+        {/* 専用の対戦ラウンド数選択パネル */}
+        <div className="panel col lb-rounds">
+          <h3>対戦ラウンド数</h3>
+          <p className="sub">指定したラウンド数（1〜5回）戦って総合勝利を競います</p>
+          <div className="round-selector-row">
             {[1, 2, 3, 4, 5].map((r) => (
               <button
                 key={r}
-                className={`ghost grow ${rounds === r ? 'primary' : ''}`}
-                style={{ padding: '6px 8px', fontSize: 13 }}
+                className={`round-btn${rounds === r ? ' active' : ''}`}
                 onClick={() => setRounds(r)}
               >
-                {r}回
+                <span className="num">{r}</span>
+                <span className="unit">ラウンド</span>
               </button>
             ))}
           </div>

@@ -1,5 +1,5 @@
 /*
- * 「高級和モダン・現代かるた」デザインシステム (順位表グリッド＆ハンコ文字修復版)
+ * 「高級和モダン・現代かるた」デザインシステム (手札選択可視化＆1〜5ラウンド選択強化版)
  */
 :root {
   /* 伝統色カラーパレット */
@@ -11,14 +11,14 @@
   --text-washi-muted: #b5b0a3; /* 落ち着いた和紙グレー */
   
   --vermilion: #c53d2d;     /* 本朱色 */
-  --vermilion-glow: rgba(197, 61, 45, 0.35);
+  --vermilion-glow: rgba(197, 61, 45, 0.45);
   --matsuba: #2d5a37;       /* 松葉色 */
   --matsuba-glow: rgba(45, 90, 55, 0.35);
   
   --gold: #c6a052;          /* 金箔 */
   --gold-light: #e5cd98;    /* 輝く金 */
   --gold-dark: #8c6d2c;     /* 鈍色金 */
-  --gold-glow: rgba(198, 160, 82, 0.25);
+  --gold-glow: rgba(198, 160, 82, 0.3);
   
   --border-washi: rgba(245, 242, 233, 0.15);
   --border-gold: rgba(198, 160, 82, 0.35);
@@ -294,6 +294,53 @@ input[type='text']:focus {
   box-shadow: 0 0 8px var(--gold-glow);
 }
 
+/* ── 1〜5ラウンド選択カードUI ── */
+.round-selector-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-top: 4px;
+}
+.round-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 4px;
+  background: rgba(24, 28, 32, 0.8);
+  border: 1.5px solid var(--border-gold);
+  border-radius: 6px;
+  color: var(--text-washi-muted);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  transition: all 0.2s ease;
+}
+.round-btn:hover:not(:disabled) {
+  border-color: var(--gold);
+  background: rgba(35, 40, 46, 0.9);
+  color: var(--text-washi);
+  transform: translateY(-2px);
+}
+.round-btn .num {
+  font-family: var(--font-poem);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+}
+.round-btn .unit {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  margin-top: 2px;
+}
+.round-btn.active {
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold)) !important;
+  border-color: var(--gold-light) !important;
+  color: #121518 !important;
+  font-weight: 700;
+  box-shadow: 0 4px 14px var(--gold-glow) !important;
+  transform: scale(1.04) !important;
+}
+
 /* ── 洗練された和紙かるた札 (Tanzaku Card) ── */
 .card, .card-tanzaku {
   position: relative;
@@ -395,17 +442,47 @@ input[type='text']:focus {
   background: var(--matsuba);
 }
 
+/* ── 手札選択状態（選択・交換捨て札の明確な視覚化） ── */
+.status-badge {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-poem);
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  z-index: 15;
+  line-height: 1;
+}
+.toss-badge {
+  background: var(--vermilion);
+  border: 1.5px solid #ffffff;
+}
+.pick-badge {
+  background: var(--gold-dark);
+  border: 1.5px solid var(--gold-light);
+}
+
 .card.selected {
-  transform: translateY(-10px) rotate(0deg) !important;
-  box-shadow: 0 10px 22px rgba(197, 61, 45, 0.25), var(--lift-card-hover);
-  border-color: var(--vermilion);
+  transform: translateY(-12px) rotate(0deg) !important;
+  box-shadow: 0 12px 24px var(--gold-glow), var(--lift-card-hover) !important;
+  border: 2px solid var(--gold) !important;
   z-index: 20;
 }
 
 .card.discarding {
-  opacity: 0.45;
-  filter: grayscale(0.5);
-  border-style: dashed;
+  transform: translateY(-12px) rotate(0deg) !important;
+  border: 2px solid var(--vermilion) !important;
+  box-shadow: 0 12px 24px var(--vermilion-glow), var(--lift-card-hover) !important;
+  opacity: 0.92;
+  z-index: 20;
 }
 .card.static { cursor: default; }
 .card.static:hover { transform: none !important; box-shadow: var(--lift-card); }
@@ -526,7 +603,6 @@ td:last-child {
   border-right: none;
 }
 
-/* ヘッダーと行の明確なアライメント固定 */
 th:first-child, td:first-child {
   width: 68px;
   text-align: center;
@@ -717,7 +793,6 @@ tr.winner td {
   text-align: center;
 }
 
-/* 修正: 点数など文字長（4文字以上: 94.5点 など）のハンコ見切れ防止スタイル */
 .hanko.small {
   font-size: 13.5px;
   line-height: 1.15;
@@ -1272,17 +1347,19 @@ input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; transform: 
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
       'invite players'
-      'mode decks';
+      'mode rounds'
+      'decks decks';
   }
   .lb-setup {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
-      'mode decks'
+      'mode rounds'
       'players decks';
   }
   .lb-invite { grid-area: invite; }
   .lb-players { grid-area: players; }
   .lb-mode { grid-area: mode; }
+  .lb-rounds { grid-area: rounds; }
   .lb-decks { grid-area: decks; }
 
   .player-list {
@@ -1312,10 +1389,10 @@ input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; transform: 
     grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-areas:
       'invite mode decks'
-      'players mode decks';
+      'players rounds decks';
   }
   .lb-setup {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-areas: 'mode players decks';
+    grid-template-areas: 'mode rounds players' 'decks decks players';
   }
 }

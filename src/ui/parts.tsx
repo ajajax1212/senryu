@@ -31,6 +31,12 @@ export function CardView({
       style={{ '--len': card.text.length } as React.CSSProperties}
       onClick={onClick}
     >
+      {discarding ? (
+        <div className="status-badge toss-badge">捨</div>
+      ) : selected ? (
+        <div className="status-badge pick-badge">選</div>
+      ) : null}
+
       <div className="text">{card.text}</div>
       <div className="reading">{card.reading}</div>
       <div className="mora-badge">{card.mora}</div>

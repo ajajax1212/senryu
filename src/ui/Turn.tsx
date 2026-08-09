@@ -83,8 +83,8 @@ export function Turn({
 
   const handProps = (c: Card) =>
     tab === 'compose'
-      ? { state: isPlaced(c) ? ('selected' as const) : undefined, onClick: () => place(c) }
-      : { state: tossing.includes(c.id) ? ('discarding' as const) : undefined, onClick: () => toggleToss(c) };
+      ? { selected: isPlaced(c), onClick: () => place(c) }
+      : { selected: tossing.includes(c.id), discarding: tossing.includes(c.id), onClick: () => toggleToss(c) };
 
   return (
     <>

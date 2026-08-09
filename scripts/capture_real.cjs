@@ -32,31 +32,21 @@ async function capture() {
   console.log('Clicking ローカル対戦 / はじめる on title screen...');
   const clickedTitle = await clickButtonByText(page, 'ローカル') || await clickButtonByText(page, '対戦') || await clickButtonByText(page, 'ひとりで');
   if (!clickedTitle) {
-    // 最初のプライマリボタンを押してみる
     const pBtn = await page.$('button.primary');
     if (pBtn) await pBtn.click();
   }
   await new Promise(r => setTimeout(r, 800));
 
-  // 2. 設定画面 (Setup) の撮影
-  const lobbyPath = path.join(artifactDir, 'real_rounds_setting.png');
+  // 2. 設定画面 (Setup) の撮影 (1〜5ラウンド選択カードの確認)
+  const lobbyPath = path.join(artifactDir, 'real_rounds_setting_fixed.png');
   await page.screenshot({ path: lobbyPath, fullPage: false });
   console.log('Captured rounds setting lobby to', lobbyPath);
 
-  // モード: コンテストモード を選択
-  console.log('Selecting コンテストモード...');
-  await clickButtonByText(page, 'コンテスト');
-  await new Promise(r => setTimeout(r, 400));
-
-  // ラウンド数: 1回 を選択
-  console.log('Selecting 1回...');
-  const ghostBtns = await page.$$('button.ghost');
-  for (const btn of ghostBtns) {
-    const txt = await page.evaluate(el => el.textContent, btn);
-    if (txt && txt.trim() === '1回') {
-      await btn.click();
-      break;
-    }
+  // 5ラウンドを選択
+  const roundBtns = await page.$$('.round-btn');
+  if (roundBtns.length >= 5) {
+    await roundBtns[4].click(); // 5ラウンド
+    console.log('Selected 5 rounds button...');
   }
   await new Promise(r => setTimeout(r, 400));
 
@@ -65,79 +55,34 @@ async function capture() {
   await clickButtonByText(page, '対戦を開始');
   await new Promise(r => setTimeout(r, 800));
 
-  // --- ゲーム進行 ---
-  // Handoff 1
-  console.log('Passing Handoff 1 / Announce...');
-  const pass1 = await page.$('.announce') || await page.$('button.primary');
-  if (pass1) await page.click('body');
+  // Handoff 1 -> 交換画面へ
+  if (await page.$('.announce')) await page.click('body');
+  await new Promise(r => setTimeout(r, 400));
+  await clickButtonByText(page, '準備');
+  await new Promise(r => setTimeout(r, 800));
+
+  // 交換タブを選択
+  console.log('Switching to 交換 tab...');
+  const tabBtns = await page.$$('.tabs button');
+  if (tabBtns.length >= 2) {
+    await tabBtns[1].click(); // 交換タブ
+  }
   await new Promise(r => setTimeout(r, 500));
-  await clickButtonByText(page, '準備');
-  await new Promise(r => setTimeout(r, 800));
 
-  // カードを選択して完成を押す
-  console.log('Submitting haiku...');
-  const cards = await page.$$('.hand .card');
-  for (let i = 0; i < Math.min(4, cards.length); i++) {
-    await cards[i].click();
-    await new Promise(r => setTimeout(r, 150));
+  // 手札から2枚クリックして「捨」選択状態にする
+  console.log('Selecting hand cards to toss...');
+  const handCards = await page.$$('.hand .card');
+  if (handCards.length >= 2) {
+    await handCards[0].click();
+    await new Promise(r => setTimeout(r, 200));
+    await handCards[1].click();
+    await new Promise(r => setTimeout(r, 200));
   }
-  await clickButtonByText(page, '完成');
-  await new Promise(r => setTimeout(r, 800));
 
-  // Handoff 2 -> Rate 1
-  console.log('Rate 1...');
-  if (await page.$('.announce')) await page.click('body');
-  await clickButtonByText(page, '準備');
-  await new Promise(r => setTimeout(r, 800));
-
-  // 採点スライダーを 95点に設定
-  const slider1 = await page.$("input[type='range']");
-  if (slider1) {
-    await page.evaluate(el => {
-      el.value = 95;
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-    }, slider1);
-  }
-  await new Promise(r => setTimeout(r, 300));
-  await clickButtonByText(page, '確定');
-  await new Promise(r => setTimeout(r, 800));
-
-  // Handoff 3 -> Rate 2
-  console.log('Rate 2...');
-  if (await page.$('.announce')) await page.click('body');
-  await clickButtonByText(page, '準備');
-  await new Promise(r => setTimeout(r, 800));
-
-  // 採点スライダーを 94点に設定
-  const slider2 = await page.$("input[type='range']");
-  if (slider2) {
-    await page.evaluate(el => {
-      el.value = 94;
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-    }, slider2);
-  }
-  await new Promise(r => setTimeout(r, 300));
-  await clickButtonByText(page, '確定');
-  await new Promise(r => setTimeout(r, 1000));
-
-  // ラウンド結果画面
-  console.log('Round Result screen...');
-  if (await page.$('.reveal')) {
-    await page.click('.reveal');
-    await new Promise(r => setTimeout(r, 500));
-  }
-  
-  // 「総合結果へ」を押す
-  console.log('Clicking 総合結果へ...');
-  await clickButtonByText(page, '総合結果');
-  await new Promise(r => setTimeout(r, 1200));
-
-  // 3. 総合結果画面 (GameOver) の撮影
-  const gameoverPath = path.join(artifactDir, 'real_gameover_grid_fixed.png');
-  await page.screenshot({ path: gameoverPath, fullPage: false });
-  console.log('Captured gameover screen with grid & fixed hanko to', gameoverPath);
+  // 手札交換画面（カード選択の赤枠・「捨」バッジが浮き出る状態）の撮影
+  const exchangePath = path.join(artifactDir, 'real_exchange_selection_fixed.png');
+  await page.screenshot({ path: exchangePath, fullPage: false });
+  console.log('Captured hand exchange card selection to', exchangePath);
 
   await browser.close();
   console.log('Capture completed successfully!');

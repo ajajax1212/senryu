@@ -173,12 +173,13 @@ io.on('connection', (socket) => {
     broadcast(room);
   });
 
-  socket.on('host:configure', ({ code, mode, decks }: { code: string; mode?: Mode; decks?: DeckId[] }, ack?: Ack) => {
+  socket.on('host:configure', ({ code, mode, decks, rounds }: { code: string; mode?: Mode; decks?: DeckId[]; rounds?: number }, ack?: Ack) => {
     withRoom(socket, code, ack, (room) => {
       if (!requireHost(room, socket, ack)) return;
       if (room.game) return ack?.({ ok: false, error: 'もう始まっています' });
       if (mode) room.mode = mode;
       if (decks) room.decks = ['standard', ...decks.filter((d) => d !== 'standard')];
+      if (rounds) (room as any).rounds = rounds;
       ack?.({ ok: true });
       broadcast(room);
     });
@@ -196,6 +197,7 @@ io.on('connection', (socket) => {
         names: room.players.map((p) => p.name),
         settings: {
           decks: room.decks as DeckId[],
+          rounds: (room as any).rounds ?? 3,
           exchangeLimit: 2,
           anonymousSubmission: true,
           revealRaters: true,

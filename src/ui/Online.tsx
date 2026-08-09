@@ -110,6 +110,7 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
   const amHost = lobby.hostId === room.me;
   const url = `${location.origin}/r/${lobby.code}`;
   const [copied, setCopied] = useState(false);
+  const [rounds, setRounds] = useState(lobby.rounds ?? 3);
 
   async function copy() {
     try {
@@ -169,6 +170,26 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="panel col lb-rounds">
+          <h3>対戦ラウンド数</h3>
+          <div className="round-selector-row">
+            {[1, 2, 3, 4, 5].map((r) => (
+              <button
+                key={r}
+                className={`round-btn${rounds === r ? ' active' : ''}`}
+                disabled={!amHost}
+                onClick={() => {
+                  setRounds(r);
+                  room.configure({ rounds: r });
+                }}
+              >
+                <span className="num">{r}</span>
+                <span className="unit">ラウンド</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="panel col lb-decks">
