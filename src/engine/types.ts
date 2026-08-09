@@ -46,9 +46,7 @@ export type GameSettings = {
   /** 秒。null で無制限。turn は交換〜作句、judge は審査・採点をまとめて計る */
   timeLimits: { turn: number | null; judge: number | null };
   /**
-   * 1台を回して遊ぶか。true なら手番の前に引き継ぎ画面を挟み、turnQueue を先頭から
-   * 1人ずつ処理する。false（オンライン）なら各自が自分の画面を見るので引き継ぎは不要で、
-   * キューに入っている全員が同時に行動できる。
+   * 1台を回して遊ぶか。
    */
   passAndPlay: boolean;
 };
@@ -56,11 +54,6 @@ export type GameSettings = {
 /** 秒。交換〜作句で5分、審査・採点で2分 */
 export const DEFAULT_TIME_LIMITS = { turn: 300, judge: 120 };
 
-/**
- * コンテストモードの平均点に付ける位。判子に押す文字。
- * 全員が0〜100で入れた平均なので中央付近に寄りやすい。
- * 「秀作」以上が少し珍しく感じられる程度に閾値を置いてある。
- */
 export const GRADES = [
   { min: 85, label: '金賞' },
   { min: 70, label: '秀作' },
@@ -73,23 +66,12 @@ export function gradeFor(average: number): string {
 }
 
 export type Phase =
-  /** タイトル〜プレイヤー登録 */
   | 'setup'
-  /** 「○○さんに端末を渡してください」。1台を回すときだけ手番の前に挟む */
   | 'handoff'
-  /**
-   * 交換と作句。オンラインでは各自が自分のペースで交換したり並べ替えたりするので、
-   * 「交換フェーズ」と「作句フェーズ」を全体で区切ることができない。どこまで進んだかは
-   * exchangesUsed と submissions に持たせ、フェーズとしてはひとまとめに扱う。
-   */
   | 'turn'
-  /** 親が全句から1句選ぶ（独断と偏見） */
   | 'judge'
-  /** 提出句に点を付ける（コンテスト） */
   | 'rate'
-  /** ラウンド結果の発表 */
   | 'roundResult'
-  /** 総合結果 */
   | 'gameover';
 
 export type RoundResult = {
@@ -128,32 +110,17 @@ export type GameState = {
   /** コンテスト用 raterId -> 0..100 */
   ratings: Record<string, number>;
   lastResult: RoundResult | null;
+  /** 各ラウンドの結果履歴。総合結果で名句ギャラリーを構築するために保持する */
+  history: RoundResult[];
 };
 
-/**
- * プレイヤーの行動には必ず playerId を付ける。オンラインでは複数人が同時に動くので
- * 「いま手番の人」を状態から一意に決められないため。
- */
 export type Action =
   | { type: 'START_GAME'; mode: Mode; settings: GameSettings; names: string[]; seed?: number }
-  /** 引き継ぎ画面で「準備できた」を押した（1台を回すときだけ） */
   | { type: 'TAKE_SEAT' }
-  /** 手札を交換する。captured は捨て場から拾う札。残りは山札から引く */
   | { type: 'EXCHANGE'; playerId: string; discardIds: string[]; capturedIds: string[] }
   | { type: 'SUBMIT'; playerId: string; upperId: string; middleId: string; lowerId: string }
-  /**
-   * 独断と偏見: 親が句を選ぶ。作者IDではなく表示順の位置で指定する。
-   * こうしておけばオンラインで配信する句から作者IDを落とせるので、
-   * 通信を覗いても誰の句かは分からない。
-   */
   | { type: 'JUDGE'; playerId: string; index: number }
-  /** コンテスト: 採点する */
   | { type: 'RATE'; playerId: string; score: number }
-  /**
-   * 制限時間切れ。止まらないよう現在のフェーズを自動で解決する。
-   * playerId を指定すればその人だけ、省略すればまだ行動していない全員を処理する。
-   * partial は作句中に選びかけていた札。埋まっていない位置だけ手札から補う。
-   */
   | {
       type: 'TIMEOUT';
       playerId?: string;

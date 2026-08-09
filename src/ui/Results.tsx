@@ -84,12 +84,10 @@ export function Rate({
       <h2>{playerById(s, me)?.name} の採点</h2>
       <HaikuView haiku={haiku} author={`${author.name} の句`} />
 
-      <div className="score-display">{score}</div>
-      {/* つまみを動かして決める。決め打ちのボタンは置かない。
-          押せる数字があると全員そこに寄って平均が偏るため */}
+      <div className="score-display">{score}点</div>
       <input type="range" min={0} max={100} value={score} onChange={(e) => setScore(Number(e.target.value))} />
       <div className="score-scale">
-        <span>0</span><span>50</span><span>100</span>
+        <span>0点</span><span>50点</span><span>100点</span>
       </div>
 
       <div className="grow" />
@@ -111,12 +109,9 @@ export function RoundResult({
   dispatch: (a: Action) => void;
 }) {
   const r = s.lastResult;
-  // 独断と偏見は選ばれた句、コンテストは唯一の提出句を主役にする
   const won =
     r?.mode === 'contest' ? r.submissions[0] : r?.submissions.find((h) => h.authorId === r.winnerId);
   const stamp = r?.mode === 'contest' && r.average !== undefined ? gradeFor(r.average) : '選';
-  // 選ばれた瞬間だけ、画面中央で大きく見せる。触れば飛ばせる。
-  // 判子は 0.6秒待ってから押されるので、その余韻まで見せてから引く
   const [revealing, setRevealing] = useState(Boolean(won));
 
   useEffect(() => {
@@ -133,7 +128,7 @@ export function RoundResult({
     <>
       {revealing && won && (
         <div className="reveal" onClick={() => setRevealing(false)}>
-          <div>
+          <div className="reveal-box">
             <div className="reveal-inner">
               <HaikuView haiku={won} stamp={stamp} />
             </div>
@@ -150,11 +145,10 @@ export function RoundResult({
       {r.mode === 'dokudan' ? (
         <>
           <p className="sub center">{activePlayer(s).name} が選んだのは</p>
-          {/* 勝ち句を先頭に、負け句を小さくして横一列に並べる */}
           <div className="board">
             <HaikuView
               haiku={won!}
-              author={`${name(r.winnerId!)} ＋1ポイント`}
+              author={`${name(r.winnerId!)} ＋1pt`}
               variant="won"
               stamp="選"
             />
@@ -175,7 +169,7 @@ export function RoundResult({
               stamp={gradeFor(r.average!)}
             />
           </div>
-          <div className="score-display">{r.average!.toFixed(1)}</div>
+          <div className="score-display">{r.average!.toFixed(1)}点</div>
           <p className="sub center">平均点 — {gradeFor(r.average!)}</p>
           {s.settings.revealRaters && (
             <table>
@@ -218,36 +212,140 @@ export function GameOver({
   const table = ranking(s);
   const top = table[0].score;
   const unit = s.mode === 'dokudan' ? '勝' : '点';
+  const name = (id: string) => playerById(s, id)?.name ?? '?';
+
+  // 1. 今大会の「最高傑作（特選句）」を抽出
+  let bestHaiku: Haiku | null = null;
+  let bestAuthorName = '';
+  let bestBadge = '';
+
+  if (s.mode === 'dokudan') {
+    // 勝利数が最も多かった短冊（または最後の勝利句）
+    const winningResults = s.history.filter((r) => r.winnerId);
+    if (winningResults.length > 0) {
+      const topWinner = winningResults[winningResults.length - 1];
+      bestHaiku = topWinner.submissions.find((h) => h.authorId === topWinner.winnerId) ?? null;
+      bestAuthorName = name(topWinner.winnerId!);
+      bestBadge = '特選';
+    }
+  } else {
+    // コンテストモードで最高得点を得た句
+    let maxAvg = -1;
+    for (const r of s.history) {
+      if (r.average !== undefined && r.average > maxAvg && r.submissions[0]) {
+        maxAvg = r.average;
+        bestHaiku = r.submissions[0];
+        bestAuthorName = name(r.submissions[0].authorId);
+        bestBadge = `${maxAvg.toFixed(1)}点`;
+      }
+    }
+  }
+
+  // 2. プレイヤーごとの作品マップ（独断: 選ばれた句一覧 / コンテスト: 詠んだ句と点数一覧）
+  const playerPoems: Record<string, { haiku: Haiku; detail: string }[]> = {};
+  s.players.forEach((p) => { playerPoems[p.id] = []; });
+
+  s.history.forEach((r) => {
+    if (r.mode === 'dokudan' && r.winnerId) {
+      const wonHaiku = r.submissions.find((h) => h.authorId === r.winnerId);
+      if (wonHaiku) {
+        playerPoems[r.winnerId].push({ haiku: wonHaiku, detail: '選' });
+      }
+    } else if (r.mode === 'contest' && r.submissions[0]) {
+      const h = r.submissions[0];
+      if (playerPoems[h.authorId]) {
+        playerPoems[h.authorId].push({
+          haiku: h,
+          detail: r.average !== undefined ? `${r.average.toFixed(1)}点` : '',
+        });
+      }
+    }
+  });
 
   return (
-    <>
+    <div className="gameover-container col">
       <h1>総合結果</h1>
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>名前</th>
-            <th className="num">{s.mode === 'dokudan' ? '選ばれた回数' : '平均点'}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {table.map((p, i) => (
-            <tr key={p.id} className={p.score === top ? 'winner' : ''}>
-              <td>{p.score === top ? '★' : i + 1}</td>
-              <td>{p.name}</td>
-              <td className="num">
-                {s.mode === 'dokudan' ? p.score : p.score.toFixed(1)}
-                {unit}
-              </td>
+      
+      {/* 🏆 今大会の特選・最高傑作表彰 */}
+      {bestHaiku && (
+        <div className="best-haiku-showcase col center">
+          <div className="label-mark center" style={{ justifyContent: 'center' }}>
+            🏆 今大会の最高傑作句
+          </div>
+          <HaikuView
+            haiku={bestHaiku}
+            author={`${bestAuthorName} の句`}
+            variant="won"
+            stamp={bestBadge}
+          />
+        </div>
+      )}
+
+      {/* 順位テーブル */}
+      <div className="panel col">
+        <h3>順位表</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>名前</th>
+              <th className="num">{s.mode === 'dokudan' ? '選ばれた回数' : '平均点'}</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="sub center">
-        {table.filter((p) => p.score === top).length > 1 ? '同率優勝' : `${table[0].name} の勝ち`}
-      </p>
+          </thead>
+          <tbody>
+            {table.map((p, i) => (
+              <tr key={p.id} className={p.score === top ? 'winner' : ''}>
+                <td>{p.score === top ? '👑 ★' : i + 1}</td>
+                <td>{p.name}</td>
+                <td className="num">
+                  {s.mode === 'dokudan' ? p.score : p.score.toFixed(1)}
+                  {unit}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="sub center" style={{ marginTop: 8, fontWeight: 'bold' }}>
+          {table.filter((p) => p.score === top).length > 1 ? '🎉 同率優勝！' : `🎉 ${table[0].name} の勝利！`}
+        </p>
+      </div>
+
+      {/* 📜 プレイヤー別作品鑑賞ギャラリー（これ面白かった！となる振り返り） */}
+      <div className="panel col gallery-panel">
+        <div className="label-mark">📜 句の鑑賞ギャラリー</div>
+        <p className="sub">
+          {s.mode === 'dokudan'
+            ? '大会中に親に選ばれた名句集です'
+            : '各プレイヤーが詠んだ句と獲得点数です'}
+        </p>
+
+        <div className="gallery-list col">
+          {table.map((p) => {
+            const poems = playerPoems[p.id] ?? [];
+            return (
+              <div key={p.id} className="player-gallery-card col">
+                <div className="player-gallery-header row">
+                  <span className="player-name">{p.name}</span>
+                  <span className="badge">{s.mode === 'dokudan' ? `${p.score}勝` : `${p.score.toFixed(1)}点`}</span>
+                </div>
+                {poems.length === 0 ? (
+                  <p className="sub" style={{ fontSize: 12 }}>（選ばれた句はありません）</p>
+                ) : (
+                  <div className="gallery-haiku-row">
+                    {poems.map((item, idx) => (
+                      <div key={idx} className="gallery-item">
+                        <HaikuView haiku={item.haiku} stamp={item.detail} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="grow" />
-      {/* 設定画面まで戻す。同じ設定で配り直すだけだとモードを変えられないため */}
       {canAdvance && onReplay ? (
         <button className="primary wide" onClick={onReplay}>
           もう一度遊ぶ
@@ -263,6 +361,6 @@ export function GameOver({
           タイトルへ
         </button>
       )}
-    </>
+    </div>
   );
 }

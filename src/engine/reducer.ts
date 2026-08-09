@@ -1,10 +1,6 @@
-import type { Action, Card, GameState, Haiku, Phase, Player } from './types';
+import type { Action, Card, GameState, Haiku, Phase, Player, RoundResult } from './types';
 import { HAND_5, HAND_7, cardsFor, makeRng, shuffle } from './cards';
 
-/**
- * 1台を回して遊ぶときに、いま端末を持っているべきプレイヤー。
- * オンラインではキュー全員が同時に動くのでこの概念は使わない。
- */
 export function seatedPlayerId(s: GameState): string | null {
   return s.turnQueue[0] ?? null;
 }
@@ -18,7 +14,6 @@ export function playerById(s: GameState, id: string): Player | null {
   return s.players.find((p) => p.id === id) ?? null;
 }
 
-/** 親（独断と偏見）または提出者（コンテスト） */
 export function activePlayer(s: GameState): Player {
   return s.players[s.activeIndex];
 }
@@ -31,18 +26,12 @@ export function remainingExchanges(s: GameState, playerId: string): number {
   return s.settings.exchangeLimit - (s.exchangesUsed[playerId] ?? 0);
 }
 
-/** その人がこのフェーズでまだ行動できるか */
 export function canAct(s: GameState, playerId: string): boolean {
   if (s.phase === 'judge') return playerId === activePlayer(s).id;
   if (!s.turnQueue.includes(playerId)) return false;
-  // 1台を回すときは先頭の人しか動けない
   return s.settings.passAndPlay ? s.turnQueue[0] === playerId : true;
 }
 
-/**
- * 山札から n 枚引く。山札が尽きたら捨て場の同じ音数の札を混ぜ直して補充する。
- * deck / discard を破壊せず、新しい配列を返す。
- */
 function drawFrom(
   deck: Card[],
   discard: GameState['discard'],
@@ -57,7 +46,7 @@ function drawFrom(
   for (let i = 0; i < n; i++) {
     if (pile.length === 0) {
       const recycled = disc.filter((d) => d.card.mora === mora);
-      if (recycled.length === 0) break; // 札が尽きた。手札が欠けた状態で続行する
+      if (recycled.length === 0) break;
       disc = disc.filter((d) => d.card.mora !== mora);
       pile = shuffle(
         recycled.map((d) => d.card),
@@ -69,10 +58,6 @@ function drawFrom(
   return { drawn, deck: pile, discard: disc };
 }
 
-/**
- * 次のフェーズへ移る。1台を回すときは間に引き継ぎ画面を挟み、
- * オンラインでは直接そのフェーズに入る。
- */
 function goto(s: GameState, phase: Phase, turnQueue: string[]): GameState {
   if (!s.settings.passAndPlay) return { ...s, phase, pendingPhase: null, turnQueue };
   return { ...s, phase: 'handoff', pendingPhase: phase, turnQueue };
@@ -81,7 +66,6 @@ function goto(s: GameState, phase: Phase, turnQueue: string[]): GameState {
 function beginRound(s: GameState, round: number): GameState {
   const n = s.players.length;
   const activeIndex = round % n;
-  // 独断と偏見は親以外の全員が詠む。親の次の席から時計回り
   const queue =
     s.mode === 'contest'
       ? [s.players[activeIndex].id]
@@ -107,6 +91,14 @@ function scoreRound(s: GameState): GameState {
   const scores = Object.values(s.ratings);
   const average = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 
+  const roundResult: RoundResult = {
+    round: s.round,
+    mode: s.mode,
+    submissions: s.submissions,
+    ratings: s.ratings,
+    average,
+  };
+
   return {
     ...s,
     phase: 'roundResult',
@@ -117,17 +109,11 @@ function scoreRound(s: GameState): GameState {
         ? { ...p, score: p.score + average, scoreHistory: [...p.scoreHistory, average] }
         : { ...p, scoreHistory: [...p.scoreHistory, 0] },
     ),
-    lastResult: {
-      round: s.round,
-      mode: s.mode,
-      submissions: s.submissions,
-      ratings: s.ratings,
-      average,
-    },
+    lastResult: roundResult,
+    history: [...s.history, roundResult],
   };
 }
 
-/** 提出を確定する。手動提出と時間切れの自動提出で共有する */
 function submit(s: GameState, me: Player, upper?: Card, middle?: Card, lower?: Card): GameState {
   if (!upper || !middle || !lower) return s;
   if (upper.mora !== 5 || middle.mora !== 7 || lower.mora !== 5) return s;
@@ -146,17 +132,14 @@ function submit(s: GameState, me: Player, upper?: Card, middle?: Card, lower?: C
   };
 
   if (queue.length > 0) {
-    // まだ詠んでいない人がいる。1台なら次の人へ引き継ぐ
     return goto(next, 'turn', queue);
   }
   if (s.mode === 'dokudan') return goto(next, 'judge', [activePlayer(next).id]);
 
-  // コンテスト: 提出者以外の全員が採点する
   const raters = next.players.filter((_, i) => i !== next.activeIndex).map((p) => p.id);
   return goto(next, 'rate', raters);
 }
 
-/** 時間切れ用。選びかけの札はそのまま活かし、空いている位置だけ手札から埋める */
 function autoFill(
   hand: Card[],
   partial?: { upperId?: string; middleId?: string; lowerId?: string },
@@ -193,6 +176,12 @@ function applyRate(s: GameState, playerId: string, score: number): GameState {
 function applyJudge(s: GameState, index: number): GameState {
   const chosen = shuffledSubmissions(s)[index];
   if (!chosen) return s;
+  const roundResult: RoundResult = {
+    round: s.round,
+    mode: s.mode,
+    submissions: s.submissions,
+    winnerId: chosen.authorId,
+  };
   return {
     ...s,
     phase: 'roundResult',
@@ -203,16 +192,11 @@ function applyJudge(s: GameState, index: number): GameState {
         ? { ...p, score: p.score + 1, scoreHistory: [...p.scoreHistory, 1] }
         : { ...p, scoreHistory: [...p.scoreHistory, 0] },
     ),
-    lastResult: {
-      round: s.round,
-      mode: s.mode,
-      submissions: s.submissions,
-      winnerId: chosen.authorId,
-    },
+    lastResult: roundResult,
+    history: [...s.history, roundResult],
   };
 }
 
-/** 山札を切り直して全員に配る。開始時と再戦で共有する */
 function deal(decks: GameState['settings']['decks'], seed: number, names: string[]) {
   const rng = makeRng(seed);
   const { deck5, deck7 } = cardsFor(decks);
@@ -256,6 +240,7 @@ export function reducer(state: GameState, action: Action): GameState {
         submissions: [],
         ratings: {},
         lastResult: null,
+        history: [],
         seed,
       };
       return beginRound(base, 0);
@@ -276,8 +261,6 @@ export function reducer(state: GameState, action: Action): GameState {
       const kept = me.hand.filter((c) => !action.discardIds.includes(c.id));
       if (out.length !== action.discardIds.length) return state;
 
-      // 捨て場から拾う札は、捨てた札と音数の内訳が一致していなければならない。
-      // ここが崩れると手札が 5音4枚+7音2枚 の構成から外れる。
       const captured = state.discard
         .filter((d) => action.capturedIds.includes(d.card.id))
         .map((d) => d.card);
@@ -322,7 +305,6 @@ export function reducer(state: GameState, action: Action): GameState {
     }
 
     case 'TIMEOUT': {
-      // 誰かが席を外しても進行が止まらないよう、その場で妥当な既定値に倒す
       switch (state.phase) {
         case 'turn': {
           const targets = action.playerId ? [action.playerId] : [...state.turnQueue];
@@ -343,7 +325,6 @@ export function reducer(state: GameState, action: Action): GameState {
           );
         }
         default:
-          // 引き継ぎ画面と結果画面には時間制限を付けない
           return state;
       }
     }
@@ -355,7 +336,6 @@ export function reducer(state: GameState, action: Action): GameState {
         return { ...state, phase: 'gameover', pendingPhase: null, turnQueue: [] };
       }
 
-      // 句に使った分だけ引き直す。使わなかった札は手元に残る
       const rng = makeRng(state.seed + next * 977);
       let deck5 = state.deck5;
       let deck7 = state.deck7;
@@ -380,7 +360,6 @@ export function reducer(state: GameState, action: Action): GameState {
   }
 }
 
-/** 審査画面に出す並び。提出順から作者が割れないようラウンドごとに固定の順で混ぜる */
 export function shuffledSubmissions(s: GameState): Haiku[] {
   return shuffle(s.submissions, makeRng(s.seed + s.round * 31));
 }
