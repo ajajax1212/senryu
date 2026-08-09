@@ -10,12 +10,9 @@ import { DeadlineBar } from './parts';
 export function Online({ onBack }: { onBack: () => void }) {
   const room = useRoom();
   const [booted, setBooted] = useState(false);
-  // useRoom は毎レンダー新しい object を返すので、booted だけを頼りにすると
-  // 状態が反映される前に rejoin が何度も飛ぶ。実行済みかを ref で押さえる
   const bootedOnce = useRef(false);
   const [draft, setDraft] = useState<Draft & { key: string }>({ key: '' });
 
-  // URL に部屋コードが入っていれば、まず前の席に戻れるか試す
   useEffect(() => {
     if (bootedOnce.current || !room.connected) return;
     bootedOnce.current = true;
@@ -72,7 +69,7 @@ function JoinScreen({
     <>
       <div className="row">
         <button className="ghost" onClick={onBack}>
-          ←
+          ← 戻る
         </button>
         <h2 className="grow">オンライン対戦</h2>
       </div>
@@ -96,7 +93,7 @@ function JoinScreen({
           </button>
           <div className="panel col">
             <h3>部屋コードで参加</h3>
-            <input type="text" value={code} placeholder="はるかぜ-とら-123" onChange={(e) => setCode(e.target.value)} />
+            <input type="text" value={code} placeholder="例: はるかぜ-とら-123" onChange={(e) => setCode(e.target.value)} />
             <button className="ghost wide" disabled={!name.trim() || !code.trim()} onClick={() => room.join(code, name)}>
               参加する
             </button>
@@ -126,96 +123,91 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
 
   return (
     <>
+      <div className="label-mark center" style={{ justifyContent: 'center', fontSize: '13px' }}>部屋コード</div>
       <h1 className="lobby-code">{lobby.code}</h1>
 
-      {/* 広い画面では「誰が来たか」と「何で遊ぶか」を横に並べる。
-          縦に積むと1画面に収まらず、開始ボタンまでスクロールが要る。
-          どこに置くかは CSS の grid-template-areas 側で決める */}
       <div className="lobby-grid lb-online">
-      <div className="panel col lb-invite">
-        <h3>このURLを配れば参加できます</h3>
-        <div className="row">
-          <div className="invite grow">{url}</div>
-          <button className="ghost" onClick={copy}>
-            {copied ? 'コピー済' : 'コピー'}
-          </button>
+        <div className="panel col lb-invite">
+          <h3>招待URL</h3>
+          <div className="row">
+            <div className="invite grow">{url}</div>
+            <button className="ghost" onClick={copy}>
+              {copied ? 'コピー済' : 'コピー'}
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div className="panel col lb-players">
-        <h3>参加者（{lobby.players.length}人）</h3>
-        {/* 定員8人まで縦に並べると枠が伸びて開始ボタンが画面外へ出る。横に流す */}
-        <div className="player-list">
-          {lobby.players.map((p) => (
-            <div key={p.id} className="row">
-              <span className="grow">
-                {p.name}
-                {p.id === lobby.hostId && ' 👑'}
-                {p.id === room.me && '（あなた）'}
-              </span>
-              {/* 接続中は当たり前なので出さない。目に入れたいのは切れた人だけ */}
-              {!p.connected && <span className="badge">切断</span>}
+        <div className="panel col lb-players">
+          <h3>参加者（{lobby.players.length}人）</h3>
+          <div className="player-list">
+            {lobby.players.map((p) => (
+              <div key={p.id} className="row">
+                <span className="grow">
+                  {p.name}
+                  {p.id === lobby.hostId && ' 👑'}
+                  {p.id === room.me && '（あなた）'}
+                </span>
+                {!p.connected && <span className="badge">切断</span>}
+              </div>
+            ))}
+          </div>
+          {lobby.players.length < 3 && <p className="sub">あと{3 - lobby.players.length}人必要です</p>}
+        </div>
+
+        <div className="panel col lb-mode">
+          <h3>モード</h3>
+          {MODES.map((m) => (
+            <div
+              key={m.id}
+              className={`deck-option${lobby.mode === m.id ? ' on' : ''}${amHost ? '' : ' locked'}`}
+              onClick={() => amHost && room.configure({ mode: m.id })}
+            >
+              <div className="check">{lobby.mode === m.id ? '✓' : ''}</div>
+              <div className="grow">
+                <div>{m.label}</div>
+                <div className="sub">{m.note}</div>
+              </div>
             </div>
           ))}
         </div>
-        {lobby.players.length < 3 && <p className="sub">あと{3 - lobby.players.length}人必要です</p>}
-      </div>
 
-      <div className="panel col lb-mode">
-        <h3>モード</h3>
-        {MODES.map((m) => (
-          <div
-            key={m.id}
-            className={`deck-option${lobby.mode === m.id ? ' on' : ''}${amHost ? '' : ' locked'}`}
-            onClick={() => amHost && room.configure({ mode: m.id })}
-          >
-            <div className="check">{lobby.mode === m.id ? '✓' : ''}</div>
-            <div className="grow">
-              <div>{m.label}</div>
-              <div className="sub">{m.note}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="panel col lb-decks">
-        <h3>使う札</h3>
-        {DECKS.map((d) => {
-          const on = lobby.decks.includes(d.id);
-          const locked = d.id === 'standard' || !amHost;
-          return (
-            <div
-              key={d.id}
-              className={`deck-option${on ? ' on' : ''}${locked ? ' locked' : ''}`}
-              onClick={() => {
-                if (locked) return;
-                const next = on ? lobby.decks.filter((x) => x !== d.id) : [...lobby.decks, d.id];
-                room.configure({ decks: next as DeckId[] });
-              }}
-            >
-              <div className="check">{on ? '✓' : ''}</div>
-              {/* 枚数は名前と同じ行に寄せる。1枚ごとに2行使うと選択肢だけで画面が埋まる */}
-              <div className="grow opt-line">
-                <span>{d.label}</span>
-                {d.rating === 'r18' && <span className="badge r18">R18</span>}
-                <span className="sub opt-count">
-                  5音{d.count5}／7音{d.count7}
-                  {d.id === 'standard' && ' ・常に使用'}
-                </span>
+        <div className="panel col lb-decks">
+          <h3>使う札</h3>
+          {DECKS.map((d) => {
+            const on = lobby.decks.includes(d.id);
+            const locked = d.id === 'standard' || !amHost;
+            return (
+              <div
+                key={d.id}
+                className={`deck-option${on ? ' on' : ''}${locked ? ' locked' : ''}`}
+                onClick={() => {
+                  if (locked) return;
+                  const next = on ? lobby.decks.filter((x) => x !== d.id) : [...lobby.decks, d.id];
+                  room.configure({ decks: next as DeckId[] });
+                }}
+              >
+                <div className="check">{on ? '✓' : ''}</div>
+                <div className="grow opt-line">
+                  <span>{d.label}</span>
+                  {d.rating === 'r18' && <span className="badge r18">R18</span>}
+                  <span className="sub opt-count">
+                    5音{d.count5}／7音{d.count7}
+                    {d.id === 'standard' && ' ・常に使用'}
+                  </span>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="grow" />
       {amHost ? (
         <button className="primary wide" disabled={lobby.players.length < 3} onClick={room.startGame}>
-          はじめる
+          対戦を開始する
         </button>
       ) : (
-        <p className="sub center">ホストが開始するのを待っています</p>
+        <p className="sub center">ホストが対戦を開始するのを待っています</p>
       )}
       {room.error && <p className="error">{room.error}</p>}
     </>

@@ -86,87 +86,85 @@ export function Setup({
     <>
       <div className="row">
         <button className="ghost" onClick={onBack}>
-          ←
+          ← 戻る
         </button>
         <h2 className="grow">ゲーム設定</h2>
       </div>
 
       {/* 横に並べて1画面に収める。配置は CSS の grid-template-areas 側 */}
       <div className="lobby-grid lb-setup">
-      <div className="panel col lb-mode">
-        <h3>モード</h3>
-        {MODES.map((m) => (
-          <div
-            key={m.id}
-            className={`deck-option${mode === m.id ? ' on' : ''}`}
-            onClick={() => onModeChange(m.id)}
-          >
-            <div className="check">{mode === m.id ? '✓' : ''}</div>
-            <div className="grow">
-              <div>{m.label}</div>
-              <div className="sub">{m.note}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="panel col lb-players">
-        <h3>プレイヤー（{MIN_PLAYERS}〜{MAX_PLAYERS}人）</h3>
-        {/* 定員8人まで縦に並べると枠が伸びて開始ボタンが画面外へ出る。横に流す */}
-        <div className="player-list">
-          {names.map((n, i) => (
-            <input
-              key={i}
-              type="text"
-              value={n}
-              placeholder={`${i + 1}人目`}
-              onChange={(e) => setName(i, e.target.value)}
-            />
-          ))}
-        </div>
-        <div className="row">
-          <button
-            className="ghost grow"
-            disabled={names.length >= MAX_PLAYERS}
-            onClick={() => setNames([...names, ''])}
-          >
-            ＋ 追加
-          </button>
-          <button
-            className="ghost grow"
-            disabled={names.length <= MIN_PLAYERS}
-            onClick={() => setNames(names.slice(0, -1))}
-          >
-            − 減らす
-          </button>
-        </div>
-      </div>
-
-      <div className="panel col lb-decks">
-        <h3>使う札</h3>
-        {DECKS.map((d) => {
-          const on = decks.includes(d.id);
-          const locked = d.id === 'standard';
-          return (
+        <div className="panel col lb-mode">
+          <h3>モード</h3>
+          {MODES.map((m) => (
             <div
-              key={d.id}
-              className={`deck-option${on ? ' on' : ''}${locked ? ' locked' : ''}`}
-              onClick={() => toggleDeck(d.id)}
+              key={m.id}
+              className={`deck-option${mode === m.id ? ' on' : ''}`}
+              onClick={() => onModeChange(m.id)}
             >
-              <div className="check">{on ? '✓' : ''}</div>
-              {/* 枚数は名前と同じ行に寄せる。1枚ごとに2行使うと選択肢だけで画面が埋まる */}
-              <div className="grow opt-line">
-                <span>{d.label}</span>
-                {d.rating === 'r18' && <span className="badge r18">R18</span>}
-                <span className="sub opt-count">
-                  5音{d.count5}／7音{d.count7}
-                  {locked && ' ・常に使用'}
-                </span>
+              <div className="check">{mode === m.id ? '✓' : ''}</div>
+              <div className="grow">
+                <div>{m.label}</div>
+                <div className="sub">{m.note}</div>
               </div>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+
+        <div className="panel col lb-players">
+          <h3>プレイヤー（{MIN_PLAYERS}〜{MAX_PLAYERS}人）</h3>
+          <div className="player-list">
+            {names.map((n, i) => (
+              <input
+                key={i}
+                type="text"
+                value={n}
+                placeholder={`${i + 1}人目`}
+                onChange={(e) => setName(i, e.target.value)}
+              />
+            ))}
+          </div>
+          <div className="row">
+            <button
+              className="ghost grow"
+              disabled={names.length >= MAX_PLAYERS}
+              onClick={() => setNames([...names, ''])}
+            >
+              ＋ 追加
+            </button>
+            <button
+              className="ghost grow"
+              disabled={names.length <= MIN_PLAYERS}
+              onClick={() => setNames(names.slice(0, -1))}
+            >
+              − 減らす
+            </button>
+          </div>
+        </div>
+
+        <div className="panel col lb-decks">
+          <h3>使う札</h3>
+          {DECKS.map((d) => {
+            const on = decks.includes(d.id);
+            const locked = d.id === 'standard';
+            return (
+              <div
+                key={d.id}
+                className={`deck-option${on ? ' on' : ''}${locked ? ' locked' : ''}`}
+                onClick={() => toggleDeck(d.id)}
+              >
+                <div className="check">{on ? '✓' : ''}</div>
+                <div className="grow opt-line">
+                  <span>{d.label}</span>
+                  {d.rating === 'r18' && <span className="badge r18">R18</span>}
+                  <span className="sub opt-count">
+                    5音{d.count5}／7音{d.count7}
+                    {locked && ' ・常に使用'}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="grow" />
@@ -184,7 +182,7 @@ export function Setup({
           })
         }
       >
-        はじめる
+        対戦を開始する
       </button>
       <p className="sub center">
         交換〜作句 {DEFAULT_TIME_LIMITS.turn / 60}分 ／ 審査・採点 {DEFAULT_TIME_LIMITS.judge / 60}分

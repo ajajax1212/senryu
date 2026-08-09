@@ -52,8 +52,7 @@ export function CardView({
     .filter(Boolean)
     .join(' ');
   // 字余り（6音・8音）の札は文字数が増えるので、既定の大きさのままだと札からはみ出す。
-  // 文字数をCSSに渡して、収まらないときだけ自動で縮めてもらう。閾値を決め打ちすると
-  // 札を足すたびに調整が要るので、長さから計算させる
+  // 文字数をCSSに渡して、収まらないときだけ自動で縮めてもらう。
   const len = [...card.text].length;
   return (
     <div className={cls} onClick={onClick} style={{ '--len': len } as CSSProperties}>
@@ -100,7 +99,7 @@ export function HaikuView({
 
 /**
  * オンライン用の残り時間。締切そのものをサーバーから受け取って描くだけで、
- * 時間切れの処理はサーバーが行う。各ブラウザが勝手に判定すると結果がずれるため。
+ * 時間切れの処理はサーバーが行う。
  */
 export function DeadlineBar({ deadline }: { deadline: number }) {
   const [now, setNow] = useState(Date.now());

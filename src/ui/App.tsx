@@ -10,25 +10,22 @@ export function App() {
   // 招待URLで開かれたときは、いきなりオンラインの参加画面に入る
   const [route, setRoute] = useState<Route>(codeFromUrl() ? { kind: 'online' } : { kind: 'title' });
 
-  // 隅に置く線の飾り。どの画面でも背後に敷く
-  const accents = <div className="accents" aria-hidden="true" />;
-
-  if (route.kind === 'local') {
-    return (<>{accents}<Local mode={route.mode} onBack={() => setRoute({ kind: 'title' })} /></>);
-  }
-  if (route.kind === 'online') {
-    return (<>{accents}<Online onBack={() => setRoute({ kind: 'title' })} /></>);
-  }
-  return (<>{accents}<Title onPick={setRoute} /></>);
+  return (
+    <>
+      {route.kind === 'local' && <Local mode={route.mode} onBack={() => setRoute({ kind: 'title' })} />}
+      {route.kind === 'online' && <Online onBack={() => setRoute({ kind: 'title' })} />}
+      {route.kind === 'title' && <Title onPick={setRoute} />}
+    </>
+  );
 }
 
 function Title({ onPick }: { onPick: (r: Route) => void }) {
   return (
     <>
       <div className="title-block">
-        {/* 題字は縦書き。札と同じ和紙の枠に収める */}
+        {/* 題字は縦書きかるた短冊モチーフ。落款スタンプ付き */}
         <div className="title-mark">五七五</div>
-        <p className="sub center">配られた札で川柳を作り、人間の主観だけで勝敗を決める</p>
+        <p className="sub center">配られた札で川柳を作り、人間の主観だけで勝敗を決めるデジタルかるた</p>
       </div>
 
       <div className="col title-actions">
@@ -42,13 +39,13 @@ function Title({ onPick }: { onPick: (r: Route) => void }) {
         <div className="divider">
           <span>1台をまわして遊ぶ</span>
         </div>
-        <p className="sub center">スマホ1台を手渡しで回す。手番のたびに手札を隠す</p>
+        <p className="sub center">スマホ・PC1台を手渡しで回す。手番のたびに手札を隠す</p>
         <div className="row">
           <button className="grow" onClick={() => onPick({ kind: 'local', mode: 'dokudan' })}>
-            独断と偏見
+            独断と偏見モード
           </button>
           <button className="grow" onClick={() => onPick({ kind: 'local', mode: 'contest' })}>
-            コンテスト
+            コンテストモード
           </button>
         </div>
       </div>
