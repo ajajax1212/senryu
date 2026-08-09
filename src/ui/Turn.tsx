@@ -7,9 +7,7 @@ import { CardView, HaikuView } from './parts';
 export type Draft = { upperId?: string; middleId?: string; lowerId?: string };
 
 /**
- * 交換と作句を1画面にまとめてある。オンラインでは各自が自分のペースで
- * 行き来するので「交換フェーズ→作句フェーズ」と全体で区切れないため。
- * 札のタップが両方の操作を兼ねないよう、画面内のタブで切り替える。
+ * 交換と作句を1画面にまとめてある。
  */
 export function Turn({
   s,
@@ -57,13 +55,12 @@ export function Turn({
     if (c.mora === 7) return setDraft({ ...draft, middleId: c.id });
     if (!draft.upperId) return setDraft({ ...draft, upperId: c.id });
     if (!draft.lowerId) return setDraft({ ...draft, lowerId: c.id });
-    setDraft({ ...draft, upperId: c.id }); // 両方埋まっていたら上句を差し替える
+    setDraft({ ...draft, upperId: c.id });
   }
 
   function toggleToss(c: Card) {
     if (tossing.includes(c.id)) {
       setTossing(tossing.filter((id) => id !== c.id));
-      // 捨てる枚数が減ったぶん、拾いすぎている札を外す
       const over = claimed.filter((x) => x.mora === c.mora);
       if (over.length > tossed.filter((x) => x.mora === c.mora).length - 1) {
         setClaiming(claiming.filter((id) => id !== over[over.length - 1].id));
@@ -77,7 +74,6 @@ export function Turn({
     dispatch({ type: 'EXCHANGE', playerId: me, discardIds: tossing, capturedIds: claiming });
     setTossing([]);
     setClaiming([]);
-    // 捨てた札が句に入っていたら外す
     setDraft({
       upperId: tossing.includes(draft.upperId ?? '') ? undefined : draft.upperId,
       middleId: tossing.includes(draft.middleId ?? '') ? undefined : draft.middleId,
@@ -112,12 +108,10 @@ export function Turn({
         </button>
       </div>
 
-      {/* 広い画面では「組む場」と「手札」を左右に並べる */}
       <div className="turn-grid">
         <div className="turn-stage">
           {tab === 'compose' ? (
             <>
-              {/* 縦書きなので右から左に読む。表示順の反転は CSS 側（row-reverse）で行う */}
               <div className="slots">
                 <Slot mora={5} hint="上の句" card={upper} onClear={() => setDraft({ ...draft, upperId: undefined })} />
                 <Slot mora={7} hint="中の句" card={middle} onClear={() => setDraft({ ...draft, middleId: undefined })} />
@@ -132,9 +126,36 @@ export function Turn({
               </button>
             </>
           ) : (
-            <p className="sub center">
-              いらない札をタップして交換する。捨てた札は全員に公開され、他の人が拾えます。
-            </p>
+            <div className="exchange-stage col">
+              <p className="sub center">
+                手札から不要な札を選んで交換します。捨てられた札は拾うことができます。
+              </p>
+              {s.discard.length > 0 && (
+                <div className="discard-area">
+                  <div className="label-mark">
+                    みんなの捨て場{tossed.length > 0 && `（あと5音${room(5)}枚・7音${room(7)}枚まで拾える）`}
+                  </div>
+                  <div className="discard-pile">
+                    {s.discard.map((d) => (
+                      <div key={d.card.id} className="discard-card-wrap">
+                        <CardView
+                          card={d.card}
+                          state={claiming.includes(d.card.id) ? 'selected' : undefined}
+                          onClick={() => {
+                            if (claiming.includes(d.card.id)) {
+                              setClaiming(claiming.filter((id) => id !== d.card.id));
+                            } else if (room(d.card.mora) > 0) {
+                              setClaiming([...claiming, d.card.id]);
+                            }
+                          }}
+                        />
+                        <div className="owner">{playerById(s, d.discardedBy)?.name}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           <div className="grow" />
@@ -167,51 +188,20 @@ export function Turn({
 
         <div className="turn-side hand-tray">
           <div className="label-mark">手札</div>
-          {/* 5音と7音を1行に混ぜ、下端を揃える。背の差がそのまま扇の抑揚になる */}
           <div className="hand">
             {[...five, ...seven].map((c) => (
               <CardView key={c.id} card={c} {...handProps(c)} />
             ))}
           </div>
-
-          {tab === 'exchange' && s.discard.length > 0 && (
-            <div className="panel col">
-              <div className="label-mark">捨て場{tossed.length > 0 && `（あと5音${room(5)}枚・7音${room(7)}枚まで拾える）`}</div>
-              <div className="discard-pile">
-                {s.discard.map((d) => (
-                  <div key={d.card.id}>
-                    <CardView
-                      card={d.card}
-                      state={claiming.includes(d.card.id) ? 'selected' : undefined}
-                      onClick={() => {
-                        if (claiming.includes(d.card.id)) {
-                          setClaiming(claiming.filter((id) => id !== d.card.id));
-                        } else if (room(d.card.mora) > 0) {
-                          setClaiming([...claiming, d.card.id]);
-                        }
-                      }}
-                    />
-                    <div className="owner">{playerById(s, d.discardedBy)?.name} が捨てた</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </>
   );
 }
 
-/**
- * 自分の手番が終わっていて、他の人を待っている状態。
- * 独断と偏見モードの親はそもそも詠まないので、同じ画面でも文言を分ける。
- */
 function Waiting({ s, me }: { s: GameState; me: string }) {
   const mine = s.submissions.find((h) => h.authorId === me);
   const author = activePlayer(s);
-  // 親も審査員も句を出さない。ここに来た理由が「提出したから」とは限らないので、
-  // 待っている理由をそのまま見出しにする
   const role =
     s.mode === 'dokudan' && me === author.id
       ? { title: 'あなたが親です', note: '句は作りません。出そろったら好きな1句を選んでください。' }
@@ -237,10 +227,6 @@ function Waiting({ s, me }: { s: GameState; me: string }) {
   );
 }
 
-/**
- * 句の1マス。上に大きく薄い「五」「七」を出して音数を示す。
- * 並びの左右は .slots の row-reverse が担当するので、ここは順序を意識しない。
- */
 function Slot({
   mora,
   hint,
