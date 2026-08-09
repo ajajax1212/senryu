@@ -7,6 +7,7 @@ export type Card = {
   mora: 5 | 7;
   text: string;
   reading: string;
+  /** 「知らんけど」など、述語の形だが一語の決まり文句として下句にも置ける札 */
   idiom?: boolean;
   tags: string[];
 };
@@ -92,19 +93,30 @@ export type GameState = {
   turnQueue: string[];
   phase: Phase;
   pendingPhase: Phase | null;
+  /** 山札のシャッフルと提出句の並べ替えに使う。テストで配札を再現するため保持する */
   seed: number;
   exchangesUsed: Record<string, number>;
   submissions: Haiku[];
   ratings: Record<string, number>;
   lastResult: RoundResult | null;
+  /** 確定したラウンド結果を古い順に積む。総合結果の振り返りで使う */
   history: RoundResult[];
 };
 
+/**
+ * プレイヤーの行動には必ず playerId を付ける。オンラインでは複数人が同時に動くので
+ * 「いま手番の人」を状態から一意に決められないため。
+ */
 export type Action =
   | { type: 'START_GAME'; mode: Mode; settings: GameSettings; names: string[]; seed?: number }
   | { type: 'TAKE_SEAT' }
   | { type: 'EXCHANGE'; playerId: string; discardIds: string[]; capturedIds: string[] }
   | { type: 'SUBMIT'; playerId: string; upperId: string; middleId: string; lowerId: string }
+  /**
+   * 独断と偏見: 親が句を選ぶ。作者IDではなく表示順の位置で指定する。
+   * こうしておけばオンラインで配信する句から作者IDを落とせるので、
+   * 通信を覗いても誰の句かは分からない。
+   */
   | { type: 'JUDGE'; playerId: string; index: number }
   | { type: 'RATE'; playerId: string; score: number }
   | {

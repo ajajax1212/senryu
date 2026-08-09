@@ -1,4 +1,5 @@
 import type { GameState, Mode } from '../src/engine/types';
+import { DEFAULT_ROUNDS } from '../src/net/events';
 
 export type RoomPlayer = {
   /** エンジン側の players 配列の位置に対応する。p0, p1, ... */
@@ -21,6 +22,8 @@ export type Room = {
   players: RoomPlayer[];
   mode: Mode;
   decks: string[];
+  /** 対戦ラウンド数。ホストがロビーで選ぶ */
+  rounds: number;
   game: GameState | null;
   /** 制限時間切れを発火させるハンドル。サーバー側で持つ */
   timer: ReturnType<typeof setTimeout> | null;
@@ -54,6 +57,7 @@ export function createRoom(): Room {
     players: [],
     mode: 'dokudan',
     decks: ['standard', 'meme'],
+    rounds: DEFAULT_ROUNDS,
     game: null,
     timer: null,
     timerKey: null,

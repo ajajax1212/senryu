@@ -60,6 +60,19 @@ export function viewFor(s: GameState, me: string): PlayerView {
   };
 }
 
+/**
+ * 山札の残り枚数。
+ *
+ * オンラインでは viewFor が deck5 / deck7 を空にして枚数だけ deckCounts に移すので、
+ * 画面が deck5.length を数えると常に0になる。どちらの形でも正しく数えられるよう
+ * ここを通す。
+ */
+export function remainingCards(s: GameState | PlayerView): number {
+  const counts = (s as PlayerView).deckCounts;
+  if (counts) return counts.five + counts.seven;
+  return s.deck5.length + s.deck7.length;
+}
+
 /** 誰がまだ行動していないかは全員に見せてよい（何を出したかは見せない） */
 export function pendingNames(s: GameState): string[] {
   return s.turnQueue.map((id) => s.players.find((p) => p.id === id)?.name ?? '?');

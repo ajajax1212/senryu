@@ -42,7 +42,7 @@ npm.cmd start --prefix senryu-game
 | `npm.cmd run build` | クライアントとサーバーをビルド |
 | `npm.cmd run dev` | クライアントだけの開発サーバー。1台版の確認用 |
 | `npm.cmd run dev:server` | サーバーだけを watch 起動 |
-| `npm.cmd test` | エンジンと札データのテスト（46件） |
+| `npm.cmd test` | エンジン・札データ・通信イベント名のテスト（59件） |
 | `npm.cmd run validate` | 札データの検証 |
 
 ## デプロイ
@@ -94,11 +94,18 @@ senryu-game/
     │   ├─ reducer.ts        (state, action) => state
     │   ├─ view.ts           1人分に絞った状態を作る
     │   └─ reducer.test.ts
-    ├─ net/useRoom.ts        Socket.IO クライアント
+    ├─ net/
+    │   ├─ events.ts        通信イベント名とラウンド数。サーバーと共用
+    │   └─ useRoom.ts       Socket.IO クライアント
     └─ ui/                   React の画面（1台版とオンライン版で共通）
 ```
 
 ## 設計
+
+**通信イベント名は `src/net/events.ts` に集約している。** サーバーとクライアントが
+それぞれ文字列を直書きすると、片方だけ書き換えたときに型エラーにもテスト失敗にもならず、
+ボタンが黙って効かなくなる。実際に一度それでオンライン対戦が全滅したので、両側が同じ定数を
+import する形にし、`src/net/events.test.ts` でリテラルの直書きが復活していないかを見張っている。
 
 **エンジンは同じものをブラウザとサーバーの両方で動かしている。** `reducer.ts` は純粋な `(state, action) => state` で、1台版はブラウザの中で、オンライン版はサーバーの中で回る。ルールが二重に実装されている箇所はない。
 
@@ -123,7 +130,7 @@ senryu-game/
 ## 札を編集する
 
 JSONを直接いじる必要はない。**`data/cards.csv` を Excel やスプレッドシートで開いて編集する。**
-696行あるので、フィルタや並べ替えが使えるほうが早い。
+833行あるので、フィルタや並べ替えが使えるほうが早い。
 
 書き出す（JSON → CSV）。
 

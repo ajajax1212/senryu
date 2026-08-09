@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Action, Card, GameState } from '../engine/types';
-import { activePlayer, playerById, remainingExchanges } from '../engine/reducer';
+import { activePlayer, playerById, remainingExchanges, totalRounds } from '../engine/reducer';
+import { remainingCards } from '../engine/view';
 import { CardView, HaikuView } from './parts';
 
 /** 選択中の札。時間切れの自動提出に渡すので画面より上で保持する */
@@ -90,8 +91,10 @@ export function Turn({
     <>
       <div className="hdr-bar">
         <div className="hdr-group">
-          <span className="hdr-badge">ラウンド {s.round + 1}</span>
-          <span className="hdr-badge">残り札: {s.deck5.length + s.deck7.length}</span>
+          <span className="hdr-badge">
+            ラウンド {s.round + 1}／{totalRounds(s)}
+          </span>
+          <span className="hdr-badge">残り札: {remainingCards(s)}</span>
         </div>
         <div className="hdr-title">川柳・{player.name}の句</div>
         <div className="hdr-group">

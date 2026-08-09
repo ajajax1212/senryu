@@ -6,6 +6,7 @@ import { Server, type Socket } from 'socket.io';
 import { reducer } from '../src/engine/reducer';
 import { viewFor } from '../src/engine/view';
 import { DEFAULT_TIME_LIMITS, type Action, type DeckId, type Mode } from '../src/engine/types';
+import { EV, clampRounds } from '../src/net/events';
 import {
   addPlayer,
   createRoom,
@@ -37,6 +38,9 @@ function lobbyState(room: Room) {
     hostId: room.hostId,
     mode: room.mode,
     decks: room.decks,
+    // ラウンド数も配る。配らないとホスト以外の画面が既定値のままになり、
+    // 「5ラウンドで始めたのに3と表示されている」というズレが出る
+    rounds: room.rounds,
     players: room.players.map((p) => ({ id: p.id, name: p.name, connected: p.connected })),
     started: room.game !== null,
   };
@@ -51,7 +55,7 @@ function broadcast(room: Room): void {
   const lobby = lobbyState(room);
   for (const player of room.players) {
     if (!player.socketId) continue;
-    io.to(player.socketId).emit('state', {
+    io.to(player.socketId).emit(EV.state, {
       lobby,
       game: room.game ? viewFor(room.game, player.id) : null,
       deadline: room.deadline,
@@ -139,7 +143,7 @@ io.on('connection', (socket) => {
     socket.data.playerId = playerId;
   };
 
-  socket.on('room:create', ({ name }: { name: string }, ack?: Ack) => {
+  socket.on(EV.create, ({ name }: { name: string }, ack?: Ack) => {
     const trimmed = (name ?? '').trim().slice(0, 12);
     if (!trimmed) return ack?.({ ok: false, error: '名前を入力してください' });
     const room = createRoom();
@@ -149,7 +153,7 @@ io.on('connection', (socket) => {
     broadcast(room);
   });
 
-  socket.on('room:join', ({ code, name }: { code: string; name: string }, ack?: Ack) => {
+  socket.on(EV.join, ({ code, name }: { code: string; name: string }, ack?: Ack) => {
     const room = getRoom(code);
     if (!room) return ack?.({ ok: false, error: 'このURLの部屋は見つかりませんでした' });
     if (room.game) return ack?.({ ok: false, error: 'このゲームはもう始まっています' });
@@ -163,7 +167,7 @@ io.on('connection', (socket) => {
     broadcast(room);
   });
 
-  socket.on('room:rejoin', ({ code, token }: { code: string; token: string }, ack?: Ack) => {
+  socket.on(EV.rejoin, ({ code, token }: { code: string; token: string }, ack?: Ack) => {
     const room = getRoom(code);
     if (!room) return ack?.({ ok: false, error: 'このURLの部屋は見つかりませんでした' });
     const player = token ? reattach(room, token, socket.id) : null;
@@ -173,19 +177,28 @@ io.on('connection', (socket) => {
     broadcast(room);
   });
 
-  socket.on('host:configure', ({ code, mode, decks, rounds }: { code: string; mode?: Mode; decks?: DeckId[]; rounds?: number }, ack?: Ack) => {
-    withRoom(socket, code, ack, (room) => {
-      if (!requireHost(room, socket, ack)) return;
-      if (room.game) return ack?.({ ok: false, error: 'もう始まっています' });
-      if (mode) room.mode = mode;
-      if (decks) room.decks = ['standard', ...decks.filter((d) => d !== 'standard')];
-      if (rounds) (room as any).rounds = rounds;
-      ack?.({ ok: true });
-      broadcast(room);
-    });
-  });
+  socket.on(
+    EV.configure,
+    ({ code, mode, decks, rounds }: { code: string; mode?: Mode; decks?: DeckId[]; rounds?: number }, ack?: Ack) => {
+      withRoom(socket, code, ack, (room) => {
+        if (!requireHost(room, socket, ack)) return;
+        if (room.game) return ack?.({ ok: false, error: 'もう始まっています' });
+        if (mode) room.mode = mode;
+        if (decks) room.decks = ['standard', ...decks.filter((d) => d !== 'standard')];
+        if (rounds !== undefined) {
+          // クライアントの言い値をそのまま入れない。1〜5以外を通すと
+          // totalRounds がその数を返し、終わらないゲームができてしまう
+          const valid = clampRounds(rounds);
+          if (valid === null) return ack?.({ ok: false, error: 'ラウンド数は1〜5で指定してください' });
+          room.rounds = valid;
+        }
+        ack?.({ ok: true });
+        broadcast(room);
+      });
+    },
+  );
 
-  socket.on('host:start', ({ code }: { code: string }, ack?: Ack) => {
+  socket.on(EV.start, ({ code }: { code: string }, ack?: Ack) => {
     withRoom(socket, code, ack, (room) => {
       if (!requireHost(room, socket, ack)) return;
       if (room.game) return ack?.({ ok: false, error: 'もう始まっています' });
@@ -197,7 +210,7 @@ io.on('connection', (socket) => {
         names: room.players.map((p) => p.name),
         settings: {
           decks: room.decks as DeckId[],
-          rounds: (room as any).rounds ?? 3,
+          rounds: room.rounds,
           exchangeLimit: 2,
           anonymousSubmission: true,
           revealRaters: true,
@@ -214,7 +227,7 @@ io.on('connection', (socket) => {
    * 総合結果からロビーへ戻す。もう一戦するときにモードや札を変えられるよう、
    * 同じ設定で配り直すのではなく設定画面まで巻き戻す。顔ぶれと席はそのまま残る。
    */
-  socket.on('host:toLobby', ({ code }: { code: string }, ack?: Ack) => {
+  socket.on(EV.toLobby, ({ code }: { code: string }, ack?: Ack) => {
     withRoom(socket, code, ack, (room) => {
       if (!requireHost(room, socket, ack)) return;
       if (!room.game) return ack?.({ ok: false, error: 'まだ始まっていません' });
@@ -227,7 +240,7 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('game:action', ({ code, action }: { code: string; action: Action }, ack?: Ack) => {
+  socket.on(EV.action, ({ code, action }: { code: string; action: Action }, ack?: Ack) => {
     withRoom(socket, code, ack, (room, playerId) => {
       if (!room.game) return ack?.({ ok: false, error: 'まだ始まっていません' });
 
@@ -249,7 +262,7 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('room:leave', ({ code }: { code: string }, ack?: Ack) => {
+  socket.on(EV.leave, ({ code }: { code: string }, ack?: Ack) => {
     withRoom(socket, code, ack, (room, playerId) => {
       removeFromLobby(room, playerId);
       resyncSeats(room);

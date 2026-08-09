@@ -6,6 +6,7 @@ import {
   ranking,
   shuffledSubmissions,
   canAct,
+  totalRounds,
 } from './reducer';
 import { viewFor } from './view';
 import { gradeFor } from './types';
@@ -553,5 +554,80 @@ describe('順位', () => {
       ],
     };
     expect(ranking(withScores).map((p) => p.name)).toEqual(['い', 'う', 'あ']);
+  });
+});
+
+describe('対戦ラウンド数', () => {
+  it('指定がなければ人数ぶん回す', () => {
+    const s = start('dokudan', ['あ', 'い', 'う', 'え']);
+    expect(totalRounds(s)).toBe(4);
+  });
+
+  it('指定した回数で終わる', () => {
+    let s = start('dokudan', ['あ', 'い', 'う', 'え'], { rounds: 2, passAndPlay: false });
+    expect(totalRounds(s)).toBe(2);
+    for (let round = 0; round < 2; round++) {
+      expect(s.phase).not.toBe('gameover');
+      s = reducer(s, { type: 'TIMEOUT' });
+      s = reducer(s, { type: 'JUDGE', playerId: s.players[round].id, index: 0 });
+      s = reducer(s, { type: 'NEXT_ROUND' });
+    }
+    expect(s.phase).toBe('gameover');
+  });
+
+  it('人数より多いラウンドでも親が一巡して回り続ける', () => {
+    let s = start('dokudan', ['あ', 'い', 'う'], { rounds: 5, passAndPlay: false });
+    const hosts: string[] = [];
+    for (let round = 0; round < 5; round++) {
+      hosts.push(s.players[s.activeIndex].name);
+      s = reducer(s, { type: 'TIMEOUT' });
+      s = reducer(s, { type: 'JUDGE', playerId: s.players[s.activeIndex].id, index: 0 });
+      s = reducer(s, { type: 'NEXT_ROUND' });
+    }
+    expect(hosts).toEqual(['あ', 'い', 'う', 'あ', 'い']);
+    expect(s.phase).toBe('gameover');
+  });
+});
+
+describe('履歴', () => {
+  it('開始時は空', () => {
+    expect(start('dokudan').history).toEqual([]);
+  });
+
+  it('独断と偏見はラウンドごとに勝者つきで積まれる', () => {
+    let s = startOnline('dokudan');
+    s = reducer(s, { type: 'TIMEOUT' });
+    const winner = shuffledSubmissions(s)[0].authorId;
+    s = reducer(s, { type: 'JUDGE', playerId: s.players[0].id, index: 0 });
+
+    expect(s.history).toHaveLength(1);
+    expect(s.history[0].round).toBe(0);
+    expect(s.history[0].winnerId).toBe(winner);
+    // 負けた句も残す。総合結果の振り返りで全員ぶん見せられるようにするため
+    expect(s.history[0].submissions).toHaveLength(2);
+    expect(s.history[0]).toEqual(s.lastResult);
+  });
+
+  it('コンテストは平均点つきで積まれ、ラウンドを重ねても消えない', () => {
+    let s = startOnline('contest', ['あ', 'い', 'う']);
+    s = submitFor(s, 'p0');
+    s = reducer(s, { type: 'RATE', playerId: 'p1', score: 80 });
+    s = reducer(s, { type: 'RATE', playerId: 'p2', score: 60 });
+    expect(s.history).toHaveLength(1);
+    expect(s.history[0].average).toBe(70);
+
+    s = reducer(s, { type: 'NEXT_ROUND' });
+    s = submitFor(s, 'p1');
+    s = reducer(s, { type: 'RATE', playerId: 'p0', score: 10 });
+    s = reducer(s, { type: 'RATE', playerId: 'p2', score: 30 });
+    expect(s.history).toHaveLength(2);
+    expect(s.history.map((r) => r.average)).toEqual([70, 20]);
+  });
+
+  it('配信する状態にも履歴が入る（総合結果の振り返りに要る）', () => {
+    let s = startOnline('dokudan');
+    s = reducer(s, { type: 'TIMEOUT' });
+    s = reducer(s, { type: 'JUDGE', playerId: s.players[0].id, index: 0 });
+    expect(viewFor(s, 'p1').history).toHaveLength(1);
   });
 });

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DECKS } from '../engine/cards';
+import { DEFAULT_ROUNDS, ROUND_CHOICES } from '../net/events';
 import { DEFAULT_TIME_LIMITS, type DeckId, type GameSettings, type Mode } from '../engine/types';
 
 const MIN_PLAYERS = 3;
@@ -29,7 +30,7 @@ export function Setup({
 }) {
   const [names, setNames] = useState(initialNames);
   const [decks, setDecks] = useState<DeckId[]>(initialDecks);
-  const [rounds, setRounds] = useState<number>(3);
+  const [rounds, setRounds] = useState<number>(DEFAULT_ROUNDS);
   const [confirmingR18, setConfirmingR18] = useState(false);
 
   const filled = names.map((n) => n.trim()).filter(Boolean);
@@ -55,7 +56,7 @@ export function Setup({
 
   if (confirmingR18) {
     return (
-      <div className="col grow" style={{ justifyContent: 'center' }}>
+      <div className="col grow confirm-stage">
         <div className="panel col">
           <h2>下ネタデッキを入れますか</h2>
           <p className="sub">
@@ -112,7 +113,7 @@ export function Setup({
           <h3>対戦ラウンド数</h3>
           <p className="sub">指定したラウンド数（1〜5回）戦って総合勝利を競います</p>
           <div className="round-selector-row">
-            {[1, 2, 3, 4, 5].map((r) => (
+            {ROUND_CHOICES.map((r) => (
               <button
                 key={r}
                 className={`round-btn${rounds === r ? ' active' : ''}`}

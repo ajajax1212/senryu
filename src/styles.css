@@ -949,6 +949,21 @@ input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; transform: 
   padding: 20px 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px var(--gold-glow);
 }
+/* 総合結果。狭い画面では縦一列 */
+.result-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+/* 表彰句はラウンド結果ほど大きくしない。順位表と勝敗まで1画面に収めたい。
+   .haiku.won の指定より詳細度を上げないと勝てないので、同じ形で1段深くする */
+.best-haiku-showcase .haiku.won .haiku-body,
+.best-haiku-showcase .haiku.won .haiku-body > div {
+  font-size: 22px;
+  min-height: 200px;
+}
+.best-haiku-showcase .haiku.won { border-width: 6px; }
+.best-haiku-showcase { padding: 14px 12px; }
 .gallery-panel {
   gap: 14px;
 }
@@ -1198,6 +1213,24 @@ input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; transform: 
   letter-spacing: 0.16em;
   color: var(--text-washi);
 }
+/* 中央に据える見出し。朱の縦線は左に付いたまま中身ごと中央に寄る */
+.label-mark.centered {
+  justify-content: center;
+  font-size: 13px;
+}
+/* 勝敗の一文。順位表の締めなので少し強く */
+.verdict {
+  margin-top: 8px;
+  font-weight: 700;
+}
+/* ギャラリーで句が1つも無いときの但し書き */
+.empty-note {
+  font-size: 12px;
+}
+/* R18の確認だけは画面の中央に置いて、他の操作に紛れさせない */
+.confirm-stage {
+  justify-content: center;
+}
 .label-mark::before {
   content: '';
   width: 3px;
@@ -1319,6 +1352,14 @@ input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; transform: 
     max-width: 980px;
     padding: 20px 32px 24px;
     gap: 16px;
+  }
+
+  /* 表彰句と順位表を左右に。縦に積むと勝敗を見るのにスクロールが要る */
+  .result-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
   }
 
   h1 { font-size: 42px; }

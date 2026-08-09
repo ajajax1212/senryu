@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { Card, Haiku } from '../engine/types';
 
 export function CardView({
@@ -15,22 +15,24 @@ export function CardView({
   variant?: 'hand' | 'slot' | 'static';
 }) {
   const is7 = card.mora === 7;
+  // 押せない札にポインタやホバー浮きを出さない。variant で明示されていなくても
+  // onClick が無ければ静止札として扱う
   const cls = [
     'card',
     is7 ? 'm7' : 'm5',
     selected ? 'selected' : '',
     discarding ? 'discarding' : '',
-    variant ?? '',
+    variant ?? (onClick ? '' : 'static'),
   ]
     .filter(Boolean)
     .join(' ');
 
+  // 字余り（6音・8音）の札は文字数が増えるので、既定の大きさのままだと札からはみ出す。
+  // 文字数をCSSに渡して、収まらないときだけ自動で縮めてもらう
+  const len = [...card.text].length;
+
   return (
-    <div
-      className={cls}
-      style={{ '--len': card.text.length } as React.CSSProperties}
-      onClick={onClick}
-    >
+    <div className={cls} style={{ '--len': len } as CSSProperties} onClick={onClick}>
       {discarding ? (
         <div className="status-badge toss-badge">捨</div>
       ) : selected ? (
@@ -73,67 +75,67 @@ export function HaikuView({
   );
 }
 
-export function Countdown({
-  seconds,
-  onExpire,
-}: {
-  seconds: number;
-  onExpire: () => void;
-}) {
-  const [rem, setRem] = useState(seconds);
+/**
+ * 1台版の残り時間。
+ *
+ * 刻みを数えるのではなく「開始時刻との差」を見る。setInterval のカウントダウンだと
+ * タブが裏に回ったときに間引かれて実時間とズレる。
+ *
+ * onExpire は ref に逃がして依存配列に入れない。呼び出し側は毎レンダー新しい関数を
+ * 渡してくるので、依存に入れると再描画のたびに effect が張り直され、残り時間が
+ * 満タンに戻ってしまう（札を1枚選ぶだけで時間切れが起きなくなる）。
+ */
+export function Countdown({ seconds, onExpire }: { seconds: number; onExpire: () => void }) {
+  const [left, setLeft] = useState(seconds);
+  const fired = useRef(false);
+  const expire = useRef(onExpire);
+  expire.current = onExpire;
 
   useEffect(() => {
-    setRem(seconds);
-    const t = setInterval(() => {
-      setRem((r) => {
-        if (r <= 1) {
-          clearInterval(t);
-          onExpire();
-          return 0;
-        }
-        return r - 1;
-      });
-    }, 1000);
-    return () => clearInterval(t);
-  }, [seconds, onExpire]);
+    fired.current = false;
+    setLeft(seconds);
+    const startedAt = Date.now();
+    const id = setInterval(() => {
+      const remain = seconds - Math.floor((Date.now() - startedAt) / 1000);
+      setLeft(Math.max(0, remain));
+      if (remain <= 0 && !fired.current) {
+        fired.current = true;
+        clearInterval(id);
+        expire.current();
+      }
+    }, 250);
+    return () => clearInterval(id);
+  }, [seconds]);
 
-  const min = Math.floor(rem / 60);
-  const sec = String(rem % 60).padStart(2, '0');
-
-  return (
-    <div className="timer">
-      <div className="timer-track">
-        <div
-          className="timer-bar"
-          style={{ width: `${Math.min(100, (rem / seconds) * 100)}%` }}
-        />
-      </div>
-      <div className="timer-label">残り {min}:{sec}</div>
-    </div>
-  );
+  return <TimerBar left={left} total={seconds} />;
 }
 
+/**
+ * オンライン用の残り時間。締切そのものをサーバーから受け取って描くだけで、
+ * 時間切れの処理はサーバーが行う。各ブラウザが勝手に判定すると結果がずれるため。
+ */
 export function DeadlineBar({ deadline }: { deadline: number }) {
   const [now, setNow] = useState(Date.now());
-
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(t);
-  }, []);
+    const id = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(id);
+  }, [deadline]);
 
-  const rem = Math.max(0, Math.ceil((deadline - now) / 1000));
-  const min = Math.floor(rem / 60);
-  const sec = String(rem % 60).padStart(2, '0');
+  return <TimerBar left={Math.max(0, Math.ceil((deadline - now) / 1000))} total={300} />;
+}
 
+/** 残り30秒を切ったら朱くする。見た目は1台版とオンラインで共通 */
+function TimerBar({ left, total }: { left: number; total: number }) {
+  const mm = Math.floor(left / 60);
+  const ss = String(left % 60).padStart(2, '0');
   return (
-    <div className="timer">
+    <div className={`timer${left <= 30 ? ' urgent' : ''}`}>
       <div className="timer-track">
-        <div
-          className="timer-bar"
-          style={{ width: `${Math.min(100, (rem / 300) * 100)}%` }}
-        />
+        <div className="timer-bar" style={{ width: `${Math.min(100, (left / total) * 100)}%` }} />
       </div>
-      <div className="timer-label">残り {min}:{sec}</div>
+      <div className="timer-label">
+        残り {mm}:{ss}
+      </div>
     </div>
   );
 }

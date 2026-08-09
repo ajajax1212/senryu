@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DECKS } from '../engine/cards';
 import type { DeckId } from '../engine/types';
 import { codeFromUrl, useRoom, type Lobby } from '../net/useRoom';
+import { ROUND_CHOICES } from '../net/events';
 import { Game } from './Game';
 import { MODES } from './Setup';
 import type { Draft } from './Turn';
@@ -110,7 +111,9 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
   const amHost = lobby.hostId === room.me;
   const url = `${location.origin}/r/${lobby.code}`;
   const [copied, setCopied] = useState(false);
-  const [rounds, setRounds] = useState(lobby.rounds ?? 3);
+  // ラウンド数はサーバーが持つ値をそのまま描く。ここでローカルに控えると
+  // ホスト以外の画面が更新されず、選んだ数と表示がずれる
+  const rounds = lobby.rounds;
 
   async function copy() {
     try {
@@ -124,7 +127,7 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
 
   return (
     <>
-      <div className="label-mark center" style={{ justifyContent: 'center', fontSize: '13px' }}>部屋コード</div>
+      <div className="label-mark centered">部屋コード</div>
       <h1 className="lobby-code">{lobby.code}</h1>
 
       <div className="lobby-grid lb-online">
@@ -175,15 +178,12 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
         <div className="panel col lb-rounds">
           <h3>対戦ラウンド数</h3>
           <div className="round-selector-row">
-            {[1, 2, 3, 4, 5].map((r) => (
+            {ROUND_CHOICES.map((r) => (
               <button
                 key={r}
                 className={`round-btn${rounds === r ? ' active' : ''}`}
                 disabled={!amHost}
-                onClick={() => {
-                  setRounds(r);
-                  room.configure({ rounds: r });
-                }}
+                onClick={() => amHost && room.configure({ rounds: r })}
               >
                 <span className="num">{r}</span>
                 <span className="unit">ラウンド</span>

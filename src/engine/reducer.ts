@@ -1,6 +1,10 @@
 import type { Action, Card, GameState, Haiku, Phase, Player, RoundResult } from './types';
 import { HAND_5, HAND_7, cardsFor, makeRng, shuffle } from './cards';
 
+/**
+ * 1台を回して遊ぶときに、いま端末を持っているべきプレイヤー。
+ * オンラインではキュー全員が同時に動くのでこの概念は使わない。
+ */
 export function seatedPlayerId(s: GameState): string | null {
   return s.turnQueue[0] ?? null;
 }
@@ -14,6 +18,7 @@ export function playerById(s: GameState, id: string): Player | null {
   return s.players.find((p) => p.id === id) ?? null;
 }
 
+/** 親（独断と偏見）または提出者（コンテスト） */
 export function activePlayer(s: GameState): Player {
   return s.players[s.activeIndex];
 }
@@ -29,6 +34,7 @@ export function remainingExchanges(s: GameState, playerId: string): number {
 export function canAct(s: GameState, playerId: string): boolean {
   if (s.phase === 'judge') return playerId === activePlayer(s).id;
   if (!s.turnQueue.includes(playerId)) return false;
+  // 1台を回すときは先頭の人しか動けない
   return s.settings.passAndPlay ? s.turnQueue[0] === playerId : true;
 }
 
@@ -58,6 +64,10 @@ function drawFrom(
   return { drawn, deck: pile, discard: disc };
 }
 
+/**
+ * 次のフェーズへ移る。1台を回すときは間に引き継ぎ画面を挟み、
+ * オンラインでは直接そのフェーズに入る。
+ */
 function goto(s: GameState, phase: Phase, turnQueue: string[]): GameState {
   if (!s.settings.passAndPlay) return { ...s, phase, pendingPhase: null, turnQueue };
   return { ...s, phase: 'handoff', pendingPhase: phase, turnQueue };
@@ -261,6 +271,8 @@ export function reducer(state: GameState, action: Action): GameState {
       const kept = me.hand.filter((c) => !action.discardIds.includes(c.id));
       if (out.length !== action.discardIds.length) return state;
 
+      // 捨て場から拾う札は、捨てた札と音数の内訳が一致していなければならない。
+      // ここが崩れると手札が 5音4枚+7音2枚 の構成から外れる。
       const captured = state.discard
         .filter((d) => action.capturedIds.includes(d.card.id))
         .map((d) => d.card);
@@ -360,6 +372,7 @@ export function reducer(state: GameState, action: Action): GameState {
   }
 }
 
+/** 審査画面に出す並び。提出順から作者が割れないようラウンドごとに固定の順で混ぜる */
 export function shuffledSubmissions(s: GameState): Haiku[] {
   return shuffle(s.submissions, makeRng(s.seed + s.round * 31));
 }
