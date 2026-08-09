@@ -1,80 +1,48 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useState } from 'react';
 import type { Card, Haiku } from '../engine/types';
-
-/**
- * 残り時間バー。setInterval の刻みを数えるのではなく開始時刻との差を見ているので、
- * タブが非アクティブになって間引かれてもズレない。
- */
-export function Countdown({ seconds, onExpire }: { seconds: number; onExpire: () => void }) {
-  const [left, setLeft] = useState(seconds);
-  const fired = useRef(false);
-  const expire = useRef(onExpire);
-  expire.current = onExpire;
-
-  useEffect(() => {
-    const startedAt = Date.now();
-    const id = setInterval(() => {
-      const remain = seconds - Math.floor((Date.now() - startedAt) / 1000);
-      setLeft(Math.max(0, remain));
-      if (remain <= 0 && !fired.current) {
-        fired.current = true;
-        clearInterval(id);
-        expire.current();
-      }
-    }, 250);
-    return () => clearInterval(id);
-  }, [seconds]);
-
-  const mm = Math.floor(left / 60);
-  const ss = String(left % 60).padStart(2, '0');
-  return (
-    <div className={`timer${left <= 30 ? ' urgent' : ''}`}>
-      <div className="timer-track">
-        <div className="timer-bar" style={{ width: `${(left / seconds) * 100}%` }} />
-      </div>
-      <span className="timer-label">
-        残り {mm}:{ss}
-      </span>
-    </div>
-  );
-}
 
 export function CardView({
   card,
-  state,
+  selected,
+  discarding,
   onClick,
+  variant,
 }: {
   card: Card;
-  state?: 'selected' | 'discarding';
+  selected?: boolean;
+  discarding?: boolean;
   onClick?: () => void;
+  variant?: 'hand' | 'slot' | 'static';
 }) {
-  const cls = ['card', card.mora === 7 ? 'm7' : 'm5', state ?? '', onClick ? '' : 'static']
+  const is7 = card.mora === 7;
+  const cls = [
+    'card',
+    is7 ? 'm7' : 'm5',
+    selected ? 'selected' : '',
+    discarding ? 'discarding' : '',
+    variant ?? '',
+  ]
     .filter(Boolean)
     .join(' ');
-  // 字余り（6音・8音）の札は文字数が増えるので、既定の大きさのままだと札からはみ出す。
-  // 文字数をCSSに渡して、収まらないときだけ自動で縮めてもらう。
-  const len = [...card.text].length;
+
   return (
-    <div className={cls} onClick={onClick} style={{ '--len': len } as CSSProperties}>
+    <div
+      className={cls}
+      style={{ '--len': card.text.length } as React.CSSProperties}
+      onClick={onClick}
+    >
       <div className="text">{card.text}</div>
       <div className="reading">{card.reading}</div>
-      <div className="mora-badge">{card.mora === 7 ? '七' : '五'}</div>
+      <div className="mora-badge">{card.mora}</div>
     </div>
   );
 }
 
-/**
- * 縦書きの句。3つの句は .haiku-body の中で通常のブロックとして積まれ、
- * vertical-rl によって右から左の3列になる（上の句が右端）。
- * 作者名は横書きに戻すため、縦書きの外に出してある。
- */
 export function HaikuView({
   haiku,
   author,
   onClick,
-  /** won なら大きく金の縁、lost なら小さく引く */
   variant,
-  /** 右下に押す判子の文字 */
   stamp,
 }: {
   haiku: Haiku;
@@ -84,6 +52,8 @@ export function HaikuView({
   stamp?: string;
 }) {
   const cls = ['haiku', onClick ? 'pickable' : '', variant ?? ''].filter(Boolean).join(' ');
+  const isSmallStamp = Boolean(stamp && stamp.length >= 4);
+
   return (
     <div className={cls} onClick={onClick}>
       <div className="haiku-body">
@@ -92,33 +62,72 @@ export function HaikuView({
         <div>{haiku.lower.text}</div>
       </div>
       {author && <div className="author">{author}</div>}
-      {stamp && <div className="hanko">{stamp}</div>}
+      {stamp && <div className={`hanko${isSmallStamp ? ' small' : ''}`}>{stamp}</div>}
     </div>
   );
 }
 
-/**
- * オンライン用の残り時間。締切そのものをサーバーから受け取って描くだけで、
- * 時間切れの処理はサーバーが行う。
- */
+export function Countdown({
+  seconds,
+  onExpire,
+}: {
+  seconds: number;
+  onExpire: () => void;
+}) {
+  const [rem, setRem] = useState(seconds);
+
+  useEffect(() => {
+    setRem(seconds);
+    const t = setInterval(() => {
+      setRem((r) => {
+        if (r <= 1) {
+          clearInterval(t);
+          onExpire();
+          return 0;
+        }
+        return r - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [seconds, onExpire]);
+
+  const min = Math.floor(rem / 60);
+  const sec = String(rem % 60).padStart(2, '0');
+
+  return (
+    <div className="timer">
+      <div className="timer-track">
+        <div
+          className="timer-bar"
+          style={{ width: `${Math.min(100, (rem / seconds) * 100)}%` }}
+        />
+      </div>
+      <div className="timer-label">残り {min}:{sec}</div>
+    </div>
+  );
+}
+
 export function DeadlineBar({ deadline }: { deadline: number }) {
   const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(id);
-  }, [deadline]);
 
-  const left = Math.max(0, Math.ceil((deadline - now) / 1000));
-  const mm = Math.floor(left / 60);
-  const ss = String(left % 60).padStart(2, '0');
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(t);
+  }, []);
+
+  const rem = Math.max(0, Math.ceil((deadline - now) / 1000));
+  const min = Math.floor(rem / 60);
+  const sec = String(rem % 60).padStart(2, '0');
+
   return (
-    <div className={`timer${left <= 30 ? ' urgent' : ''}`}>
+    <div className="timer">
       <div className="timer-track">
-        <div className="timer-bar" style={{ width: `${Math.min(100, (left / 300) * 100)}%` }} />
+        <div
+          className="timer-bar"
+          style={{ width: `${Math.min(100, (rem / 300) * 100)}%` }}
+        />
       </div>
-      <span className="timer-label">
-        残り {mm}:{ss}
-      </span>
+      <div className="timer-label">残り {min}:{sec}</div>
     </div>
   );
 }

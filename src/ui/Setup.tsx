@@ -5,7 +5,6 @@ import { DEFAULT_TIME_LIMITS, type DeckId, type GameSettings, type Mode } from '
 const MIN_PLAYERS = 3;
 const MAX_PLAYERS = 8;
 
-/** ロビーの説明と同じ文言を使う。2か所で食い違わないようここに置く */
 export const MODES = [
   { id: 'dokudan' as const, label: '独断と偏見モード', note: '親が好みで一番良い句を選ぶ。全員同時に作句できる' },
   { id: 'contest' as const, label: 'コンテストモード', note: '1人ずつ提出し、他の全員が100点満点で採点する' },
@@ -22,16 +21,15 @@ export function Setup({
 }: {
   mode: Mode;
   onModeChange: (m: Mode) => void;
-  /** 前回の顔ぶれ。もう一戦するときに入力し直させない */
   initialNames: string[];
   initialDecks: DeckId[];
-  /** オンライン版では名前入力はロビー側が持つのでここでは使わない */
   online: boolean;
   onStart: (names: string[], settings: GameSettings) => void;
   onBack: () => void;
 }) {
   const [names, setNames] = useState(initialNames);
   const [decks, setDecks] = useState<DeckId[]>(initialDecks);
+  const [rounds, setRounds] = useState<number>(3);
   const [confirmingR18, setConfirmingR18] = useState(false);
 
   const filled = names.map((n) => n.trim()).filter(Boolean);
@@ -42,7 +40,7 @@ export function Setup({
   }
 
   function toggleDeck(id: DeckId) {
-    if (id === 'standard') return; // 山札の骨格なので外せない
+    if (id === 'standard') return;
     if (decks.includes(id)) {
       setDecks(decks.filter((d) => d !== id));
       return;
@@ -91,7 +89,6 @@ export function Setup({
         <h2 className="grow">ゲーム設定</h2>
       </div>
 
-      {/* 横に並べて1画面に収める。配置は CSS の grid-template-areas 側 */}
       <div className="lobby-grid lb-setup">
         <div className="panel col lb-mode">
           <h3>モード</h3>
@@ -108,6 +105,21 @@ export function Setup({
               </div>
             </div>
           ))}
+
+          {/* ラウンド数選択 (1 〜 5 ラウンド) */}
+          <h3 style={{ marginTop: 12 }}>対戦ラウンド数</h3>
+          <div className="row" style={{ gap: 6 }}>
+            {[1, 2, 3, 4, 5].map((r) => (
+              <button
+                key={r}
+                className={`ghost grow ${rounds === r ? 'primary' : ''}`}
+                style={{ padding: '6px 8px', fontSize: 13 }}
+                onClick={() => setRounds(r)}
+              >
+                {r}回
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="panel col lb-players">
@@ -174,6 +186,7 @@ export function Setup({
         onClick={() =>
           onStart(filled, {
             decks,
+            rounds,
             exchangeLimit: 2,
             anonymousSubmission: true,
             revealRaters: true,
@@ -182,7 +195,7 @@ export function Setup({
           })
         }
       >
-        対戦を開始する
+        対戦を開始する（全{rounds}ラウンド）
       </button>
       <p className="sub center">
         交換〜作句 {DEFAULT_TIME_LIMITS.turn / 60}分 ／ 審査・採点 {DEFAULT_TIME_LIMITS.judge / 60}分

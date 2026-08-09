@@ -19,7 +19,7 @@ export function activePlayer(s: GameState): Player {
 }
 
 export function totalRounds(s: GameState): number {
-  return s.players.length;
+  return s.settings.rounds ?? s.players.length;
 }
 
 export function remainingExchanges(s: GameState, playerId: string): number {

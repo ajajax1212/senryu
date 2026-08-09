@@ -1,5 +1,5 @@
 /*
- * 「高級和モダン・現代かるた」デザインシステム (結果演出＆ハンコアニメーション完全修復版)
+ * 「高級和モダン・現代かるた」デザインシステム (順位表グリッド＆ハンコ文字修復版)
  */
 :root {
   /* 伝統色カラーパレット */
@@ -486,6 +486,75 @@ input[type='text']:focus {
   backdrop-filter: blur(8px);
 }
 
+/* ── 順位表テーブルのアライメント & グリッド線 ── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border-gold);
+  background: rgba(16, 20, 24, 0.7);
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 6px 0;
+}
+
+th {
+  background: linear-gradient(180deg, #24292e, #1a1d21);
+  color: var(--gold-light);
+  font-family: var(--font-poem);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 10px 14px;
+  border-bottom: 2px solid var(--gold);
+  border-right: 1px solid var(--border-gold);
+  text-align: left;
+}
+th:last-child {
+  border-right: none;
+}
+
+td {
+  font-family: var(--font-poem);
+  font-size: 14px;
+  color: var(--text-washi);
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(198, 160, 82, 0.18);
+  border-right: 1px solid rgba(198, 160, 82, 0.18);
+  vertical-align: middle;
+}
+td:last-child {
+  border-right: none;
+}
+
+/* ヘッダーと行の明確なアライメント固定 */
+th:first-child, td:first-child {
+  width: 68px;
+  text-align: center;
+  font-weight: bold;
+}
+th:nth-child(2), td:nth-child(2) {
+  text-align: left;
+  padding-left: 18px;
+}
+th.num, td.num {
+  width: 140px;
+  text-align: right;
+  padding-right: 18px;
+  font-weight: bold;
+  color: var(--gold-light);
+}
+
+tr:hover {
+  background: rgba(198, 160, 82, 0.06);
+}
+tr.winner {
+  background: rgba(198, 160, 82, 0.14) !important;
+}
+tr.winner td {
+  color: #ffffff;
+  font-weight: bold;
+}
+
 /* ── 独立した捨て場エリア ── */
 .exchange-stage {
   width: 100%;
@@ -589,7 +658,6 @@ input[type='text']:focus {
 }
 .haiku-body > div:not(:last-child) { margin-block-end: 18px; }
 
-/* 修正: 作者名を左下に配置し、右下のハンコと絶対被らない設計 */
 .haiku .author {
   position: absolute;
   left: 12px;
@@ -621,15 +689,17 @@ input[type='text']:focus {
 .haiku.lost { opacity: 0.75; }
 .haiku.lost .haiku-body, .haiku.lost .haiku-body > div { font-size: 18px; min-height: 190px; color: #1a1a1c !important; }
 
-/* 修正: ハンコの位置を右下（right: -16px; bottom: -14px;）にして左下の作者名と完全分離！ */
+/* ── ハンコ（印章・落款） ── */
 .hanko {
   position: absolute;
   right: -16px;
   bottom: -14px;
   width: 62px;
   height: 62px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   border: 3px solid var(--vermilion);
   border-radius: 3px;
   color: var(--vermilion) !important;
@@ -638,13 +708,25 @@ input[type='text']:focus {
   font-size: 22px;
   font-weight: 700;
   letter-spacing: 0.04em;
+  line-height: 1;
   transform: rotate(-10deg);
   pointer-events: none;
   box-shadow: var(--lift-hanko);
   z-index: 10;
+  padding: 2px;
+  text-align: center;
 }
 
-/* ── 選出の演出（Reveal Overlay & ハンコ押し叩きアニメーション復元） ── */
+/* 修正: 点数など文字長（4文字以上: 94.5点 など）のハンコ見切れ防止スタイル */
+.hanko.small {
+  font-size: 13.5px;
+  line-height: 1.15;
+  letter-spacing: 0;
+  word-break: break-all;
+  padding: 3px 2px;
+}
+
+/* ── 選出の演出（Reveal Overlay） ── */
 .reveal {
   position: fixed;
   inset: 0;
@@ -679,7 +761,6 @@ input[type='text']:focus {
 }
 .reveal .haiku-body, .reveal .haiku-body > div { font-size: 36px; min-height: 360px; color: #1a1a1c !important; }
 
-/* ハンコがドカンと拡大（2.5倍）からポンッ！と押されるスタンプアニメーション復元 */
 .reveal .hanko {
   width: 90px;
   height: 90px;
@@ -688,6 +769,11 @@ input[type='text']:focus {
   bottom: -20px;
   animation: stamp-bounce 0.48s cubic-bezier(0.3, 1.6, 0.5, 1) 0.55s both;
 }
+.reveal .hanko.small {
+  font-size: 18px;
+  line-height: 1.15;
+}
+
 @keyframes stamp-bounce {
   from { opacity: 0; transform: rotate(-10deg) scale(2.6); }
   65% { opacity: 1; transform: rotate(-10deg) scale(0.92); }
@@ -706,7 +792,7 @@ input[type='text']:focus {
   animation: rise 0.5s ease-out 0.85s both;
 }
 
-/* ── 採点スライダー完全修復（透明化の解消＆輝く金箔デザイン） ── */
+/* ── 採点スライダー ── */
 .score-display {
   font-family: var(--font-poem);
   font-size: 56px;
@@ -737,7 +823,6 @@ input[type='range'] {
   margin-top: -4px;
 }
 
-/* トラック（線）を輝く金箔ラインに強化 */
 input[type='range']::-webkit-slider-runnable-track {
   height: 8px;
   background: linear-gradient(90deg, #3a2e16, #8c6d2c, #e5cd98);
@@ -753,7 +838,6 @@ input[type='range']::-moz-range-track {
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
-/* つまみ（ノブ）を立体的な金箔ボタンとして視認化 */
 input[type='range']::-webkit-slider-thumb {
   appearance: none;
   -webkit-appearance: none;
@@ -828,7 +912,7 @@ input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; transform: 
   margin-right: -25px;
 }
 
-/* ── 作句スロット フィット仕様 ── */
+/* ── 作句スロット ── */
 .slots {
   display: flex;
   flex-direction: row-reverse;
@@ -898,7 +982,7 @@ input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; transform: 
   line-height: 1.5;
 }
 
-/* ── 作句／交換 タブ ── */
+/* ── タブ ── */
 .tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;

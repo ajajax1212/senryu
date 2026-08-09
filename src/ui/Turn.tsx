@@ -140,7 +140,7 @@ export function Turn({
                       <div key={d.card.id} className="discard-card-wrap">
                         <CardView
                           card={d.card}
-                          state={claiming.includes(d.card.id) ? 'selected' : undefined}
+                          selected={claiming.includes(d.card.id)}
                           onClick={() => {
                             if (claiming.includes(d.card.id)) {
                               setClaiming(claiming.filter((id) => id !== d.card.id));
