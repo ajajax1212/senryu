@@ -77,8 +77,8 @@ Unblock-File "C:\Program Files\nodejs\npm.ps1", "C:\Program Files\nodejs\npx.ps1
 ```
 senryu-game/
 ├─ docs/SPEC.md              仕様書
-├─ data/decks/               札データ（合計833枚）
-│   ├─ standard.json         標準 336枚
+├─ data/decks/               札データ（合計902枚）
+│   ├─ standard.json         標準 405枚
 │   ├─ meme.json             ネットミーム・流行語 197枚
 │   └─ spicy.json            下ネタ（R18・デフォルトOFF）300枚
 ├─ data/cards.csv            上の3つをまとめて編集するためのCSV
@@ -130,7 +130,7 @@ import する形にし、`src/net/events.test.ts` でリテラルの直書きが
 ## 札を編集する
 
 JSONを直接いじる必要はない。**`data/cards.csv` を Excel やスプレッドシートで開いて編集する。**
-833行あるので、フィルタや並べ替えが使えるほうが早い。
+902行あるので、フィルタや並べ替えが使えるほうが早い。
 
 書き出す（JSON → CSV）。
 

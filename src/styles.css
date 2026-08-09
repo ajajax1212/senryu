@@ -1350,7 +1350,8 @@ input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; transform: 
 @media (min-width: 900px) {
   #root {
     max-width: 980px;
-    padding: 20px 32px 24px;
+    /* 作句画面が1画面に収まるかどうかは数pxで決まる。下の余白は詰めておく */
+    padding: 20px 32px 16px;
     gap: 16px;
   }
 
