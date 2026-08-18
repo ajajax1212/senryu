@@ -372,6 +372,25 @@ export function reducer(state: GameState, action: Action): GameState {
         return { ...state, phase: 'gameover', pendingPhase: null, turnQueue: [] };
       }
 
+      // ラウンドの切れ目（全員が親を1回やり終えたところ）では、山札を切り直して
+      // 全員に配り直し、捨て場も空にする。手札を持ち越すと、良い札を抱えた人が
+      // 次のラウンドも有利なまま始まるので、ラウンドごとに仕切り直す。
+      if (next % state.players.length === 0) {
+        const seed = state.seed + next * 7919;
+        const names = state.players.map((p) => p.name);
+        const { hands, deck5, deck7 } = deal(state.settings.decks, seed, names);
+        return beginTurn(
+          {
+            ...state,
+            deck5,
+            deck7,
+            discard: [],
+            players: state.players.map((p, i) => ({ ...p, hand: hands[i] })),
+          },
+          next,
+        );
+      }
+
       const rng = makeRng(state.seed + next * 977);
       let deck5 = state.deck5;
       let deck7 = state.deck7;

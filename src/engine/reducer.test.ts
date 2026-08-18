@@ -633,6 +633,69 @@ describe('対戦ラウンド数', () => {
   });
 });
 
+describe('ラウンドの切れ目での仕切り直し', () => {
+  /** 独断と偏見で1手番進める */
+  function playTurn(s: GameState): GameState {
+    s = reducer(s, { type: 'TIMEOUT' });
+    s = reducer(s, { type: 'JUDGE', playerId: s.players[s.activeIndex].id, index: 0 });
+    return reducer(s, { type: 'NEXT_TURN' });
+  }
+
+  it('ラウンドが変わると全員に配り直し、捨て場も空になる', () => {
+    // 3人・2ラウンド。手番2→3がラウンドの切れ目
+    let s = start('dokudan', ['あ', 'い', 'う'], { rounds: 2, passAndPlay: false });
+
+    // 捨て場に札を積んでおく
+    const me = s.players[1];
+    s = reducer(s, {
+      type: 'EXCHANGE',
+      playerId: me.id,
+      discardIds: [me.hand.filter((c) => c.mora === 5)[0].id],
+      capturedIds: [],
+    });
+    expect(s.discard.length).toBeGreaterThan(0);
+
+    s = playTurn(s); // 手番0 → 1（ラウンド内）
+    expect(roundNumber(s)).toBe(1);
+    expect(s.discard.length).toBeGreaterThan(0); // まだ持ち越す
+
+    const before = s.players.map((p) => p.hand.map((c) => c.id).join(','));
+    s = playTurn(s); // 手番1 → 2（まだラウンド内）
+    s = playTurn(s); // 手番2 → 3（ここでラウンドが変わる）
+
+    expect(roundNumber(s)).toBe(2);
+    expect(seatNumber(s)).toBe(1);
+    expect(s.discard).toEqual([]);
+
+    const after = s.players.map((p) => p.hand.map((c) => c.id).join(','));
+    expect(after).not.toEqual(before);
+    for (const p of s.players) {
+      expect(p.hand.filter((c) => c.mora === 5)).toHaveLength(4);
+      expect(p.hand.filter((c) => c.mora === 7)).toHaveLength(2);
+    }
+    // 配り直しても同じ札が2人に渡らない
+    const ids = s.players.flatMap((p) => p.hand.map((c) => c.id));
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('得点はラウンドをまたいでも持ち越す', () => {
+    let s = start('dokudan', ['あ', 'い', 'う'], { rounds: 2, passAndPlay: false });
+    for (let i = 0; i < 3; i++) s = playTurn(s);
+    expect(roundNumber(s)).toBe(2);
+    expect(s.players.reduce((a, p) => a + p.score, 0)).toBe(3); // 3手番ぶんの勝ち
+    expect(s.history).toHaveLength(3);
+  });
+
+  it('ラウンドの途中では使った札だけ補充する', () => {
+    let s = start('dokudan', ['あ', 'い', 'う'], { rounds: 2, passAndPlay: false });
+    const keeper = s.players[0]; // 親は詠まないので手札が減らない
+    const before = keeper.hand.map((c) => c.id).join(',');
+    s = playTurn(s);
+    expect(roundNumber(s)).toBe(1);
+    expect(s.players[0].hand.map((c) => c.id).join(',')).toBe(before);
+  });
+});
+
 describe('履歴', () => {
   it('開始時は空', () => {
     expect(start('dokudan').history).toEqual([]);
