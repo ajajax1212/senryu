@@ -3,6 +3,7 @@ import type { Action, GameState, Haiku } from '../engine/types';
 import { activePlayer, playerById, ranking, roundNumber, seatNumber, totalTurns } from '../engine/reducer';
 import { gradeFor } from '../engine/types';
 import { HaikuView } from './parts';
+import { ProgressBar } from './Turn';
 
 export function Judge({
   s,
@@ -73,6 +74,7 @@ export function Rate({
         <HaikuView haiku={haiku} />
         <div className="panel col center">
           <h3>{me === author.id ? '採点されています' : `${s.ratings[me]}点を入れました`}</h3>
+          <ProgressBar s={s} />
           {waiting.length > 0 && <p className="sub">まだ入れていない人: {waiting.join('、')}</p>}
         </div>
       </>

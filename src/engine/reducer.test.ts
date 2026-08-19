@@ -9,6 +9,7 @@ import {
   totalRounds,
   totalTurns,
   handOf,
+  phaseProgress,
   freeCardOf,
   freeCardId,
   roundNumber,
@@ -827,6 +828,37 @@ describe('自由札', () => {
     const mine = s.submissions.find((h) => h.authorId === 'p1')!;
     expect([mine.upper, mine.middle, mine.lower].some((c) => c.free)).toBe(false);
     expect(s.players[1].free.usedRound).toBeNull();
+  });
+});
+
+describe('進み具合', () => {
+  it('独断と偏見は親以外の人数が母数', () => {
+    let s = startOnline('dokudan', ['あ', 'い', 'う', 'え']);
+    expect(phaseProgress(s)).toEqual({ done: 0, total: 3 });
+    s = submitFor(s, 'p1');
+    expect(phaseProgress(s)).toEqual({ done: 1, total: 3 });
+    s = submitFor(s, 'p2');
+    s = submitFor(s, 'p3');
+    // 全員出そろうと審査へ移るので、進み具合は出さない
+    expect(s.phase).toBe('judge');
+    expect(phaseProgress(s)).toBeNull();
+  });
+
+  it('コンテストは詠む1人、採点は残り全員が母数', () => {
+    let s = startOnline('contest', ['あ', 'い', 'う', 'え']);
+    expect(phaseProgress(s)).toEqual({ done: 0, total: 1 });
+    s = submitFor(s, 'p0');
+    expect(s.phase).toBe('rate');
+    expect(phaseProgress(s)).toEqual({ done: 0, total: 3 });
+    s = reducer(s, { type: 'RATE', playerId: 'p1', score: 50 });
+    expect(phaseProgress(s)).toEqual({ done: 1, total: 3 });
+  });
+
+  it('結果画面では出さない', () => {
+    let s = startOnline('dokudan');
+    s = reducer(s, { type: 'TIMEOUT' });
+    s = reducer(s, { type: 'JUDGE', playerId: 'p0', index: 0 });
+    expect(phaseProgress(s)).toBeNull();
   });
 });
 

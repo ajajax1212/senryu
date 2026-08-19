@@ -22,7 +22,7 @@ TypeScript / React 19 / Vite 6 / Express 4 / Socket.IO 4 / Vitest 2。ESM（`"ty
 | `npm.cmd run build` | クライアント（`dist/`）とサーバー（`dist-server/`）の両方 |
 | `npm.cmd run dev` | Vite 開発サーバー（5173）。**クライアントのみ＝1台版の確認用** |
 | `npm.cmd run dev:server` | サーバーだけ watch 起動 |
-| `npm.cmd test` | Vitest 76件（エンジン65 / 通信イベント6 / 札データ5） |
+| `npm.cmd test` | Vitest 79件（エンジン68 / 通信イベント6 / 札データ5） |
 | `npm.cmd run validate` | 札データの検証 |
 | `npm.cmd run cards:export` / `cards:import` | 札データの CSV 往復。**import 後は自動で validate が走る** |
 

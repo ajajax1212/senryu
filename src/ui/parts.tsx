@@ -6,6 +6,8 @@ export function CardView({
   card,
   selected,
   discarding,
+  leaving,
+  arriving,
   onClick,
   onEdit,
   variant,
@@ -13,6 +15,10 @@ export function CardView({
   card: Card;
   selected?: boolean;
   discarding?: boolean;
+  /** 交換で手放す札。抜けていく動き */
+  leaving?: boolean;
+  /** 引いてきたばかりの札。差し込まれる動き */
+  arriving?: boolean;
   onClick?: () => void;
   /** 自由札の書き直し。渡すと札の隅に筆ボタンが出る */
   onEdit?: () => void;
@@ -27,6 +33,8 @@ export function CardView({
     card.free ? 'free' : '',
     selected ? 'selected' : '',
     discarding ? 'discarding' : '',
+    leaving ? 'leaving' : '',
+    arriving ? 'arriving' : '',
     variant ?? (onClick ? '' : 'static'),
   ]
     .filter(Boolean)

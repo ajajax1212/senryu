@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Action, Card, GameState } from '../engine/types';
 import {
   activePlayer,
   freeCardOf,
   handOf,
+  phaseProgress,
   playerById,
   remainingExchanges,
   roundNumber,
@@ -36,6 +37,26 @@ export function Turn({
   const [tossing, setTossing] = useState<string[]>([]);
   const [claiming, setClaiming] = useState<string[]>([]);
   const [editingFree, setEditingFree] = useState(false);
+  // 交換の演出。捨てる札が抜けるのを見せてから実際に交換する
+  const [leaving, setLeaving] = useState<string[]>([]);
+  const [arrived, setArrived] = useState<string[]>([]);
+  const knownIds = useRef<Set<string> | null>(null);
+
+  // 手札に無かったIDが現れたら「引いてきた札」。交換でも配り直しでも同じように光る
+  const handIds = handOf(s, me)
+    .map((c) => c.id)
+    .join(',');
+  useEffect(() => {
+    const ids = new Set(handIds ? handIds.split(',') : []);
+    const prev = knownIds.current;
+    knownIds.current = ids;
+    if (!prev) return; // 初回の配札では光らせない
+    const fresh = [...ids].filter((id) => !prev.has(id));
+    if (fresh.length === 0) return;
+    setArrived(fresh);
+    const t = setTimeout(() => setArrived([]), 900);
+    return () => clearTimeout(t);
+  }, [handIds]);
 
   const player = playerById(s, me);
   const submitted = s.submissions.some((h) => h.authorId === me) || !s.turnQueue.includes(me);
@@ -85,28 +106,47 @@ export function Turn({
     }
   }
 
+  /**
+   * 交換。捨てる札が抜けていくのを見せてから state を動かす。
+   * 即座に入れ替えると、本当に交換できたのか分からないため。
+   */
   function commitExchange() {
-    dispatch({ type: 'EXCHANGE', playerId: me, discardIds: tossing, capturedIds: claiming });
+    if (leaving.length > 0) return; // 演出中の二度押しを防ぐ
+    const discardIds = tossing;
+    const capturedIds = claiming;
+
+    setLeaving(discardIds);
     setTossing([]);
     setClaiming([]);
     setDraft({
-      upperId: tossing.includes(draft.upperId ?? '') ? undefined : draft.upperId,
-      middleId: tossing.includes(draft.middleId ?? '') ? undefined : draft.middleId,
-      lowerId: tossing.includes(draft.lowerId ?? '') ? undefined : draft.lowerId,
+      upperId: discardIds.includes(draft.upperId ?? '') ? undefined : draft.upperId,
+      middleId: discardIds.includes(draft.middleId ?? '') ? undefined : draft.middleId,
+      lowerId: discardIds.includes(draft.lowerId ?? '') ? undefined : draft.lowerId,
     });
+
+    setTimeout(() => {
+      dispatch({ type: 'EXCHANGE', playerId: me, discardIds, capturedIds });
+      setLeaving([]);
+    }, 300);
   }
 
   const handProps = (c: Card) => {
+    const motion = {
+      leaving: leaving.includes(c.id),
+      arriving: arrived.includes(c.id),
+    };
     if (tab === 'compose') {
       return {
+        ...motion,
         selected: isPlaced(c),
         onClick: () => place(c),
         ...(c.free ? { onEdit: () => setEditingFree(true) } : {}),
       };
     }
     // 交換タブ。自由札は交換に出せないので押しても何も起きない
-    if (c.free) return { variant: 'static' as const };
+    if (c.free) return { ...motion, variant: 'static' as const };
     return {
+      ...motion,
       selected: tossing.includes(c.id),
       discarding: tossing.includes(c.id),
       onClick: () => toggleToss(c),
@@ -205,7 +245,11 @@ export function Turn({
           <div className="grow" />
 
           {tab === 'exchange' ? (
-            <button className="primary wide" disabled={tossing.length === 0 || left <= 0} onClick={commitExchange}>
+            <button
+              className="primary wide"
+              disabled={tossing.length === 0 || left <= 0 || leaving.length > 0}
+              onClick={commitExchange}
+            >
               {tossing.length}枚を交換する
               {claimed.length > 0 && `（うち${claimed.length}枚は捨て場から）`}
             </button>
@@ -279,6 +323,7 @@ function Waiting({ s, me }: { s: GameState; me: string }) {
       )}
       <div className="panel col center">
         <h3>{waiting.length > 0 ? 'まだ詠んでいる人' : '全員そろいました'}</h3>
+        <ProgressBar s={s} />
         {waiting.length > 0 && <p>{waiting.join('、')}</p>}
       </div>
     </>
@@ -305,6 +350,25 @@ function Slot({
       >
         {card ? card.text : <span className="hint">{hint}</span>}
       </div>
+    </div>
+  );
+}
+
+/**
+ * 「あと何人待てばいいのか」を出す。名前の羅列だけだと残りが数えにくく、
+ * オンラインでは特に「止まっているのか進んでいるのか」が分からない。
+ */
+export function ProgressBar({ s }: { s: GameState }) {
+  const p = phaseProgress(s);
+  if (!p || p.total <= 0) return null;
+  return (
+    <div className="progress">
+      <div className="progress-track">
+        <div className="progress-bar" style={{ width: `${(p.done / p.total) * 100}%` }} />
+      </div>
+      <span className="progress-label">
+        {p.done} / {p.total}人
+      </span>
     </div>
   );
 }

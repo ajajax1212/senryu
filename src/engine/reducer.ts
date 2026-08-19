@@ -88,6 +88,23 @@ export function handOf(s: GameState, playerId: string): Card[] {
   return free ? [...p.hand, free] : p.hand;
 }
 
+/**
+ * いまのフェーズで何人が終わったか。待っている人に「あと何人か」を見せる。
+ * turnQueue は終わった人から抜けていくので、母数はフェーズごとに数え直す。
+ */
+export function phaseProgress(s: GameState): { done: number; total: number } | null {
+  const n = s.players.length;
+  if (s.phase === 'turn') {
+    const total = s.mode === 'contest' ? 1 : n - 1;
+    return { done: total - s.turnQueue.length, total };
+  }
+  if (s.phase === 'rate') {
+    const total = n - 1;
+    return { done: total - s.turnQueue.length, total };
+  }
+  return null;
+}
+
 export function remainingExchanges(s: GameState, playerId: string): number {
   return s.settings.exchangeLimit - (s.exchangesUsed[playerId] ?? 0);
 }
