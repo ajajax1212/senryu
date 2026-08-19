@@ -8,11 +8,14 @@ import {
   canAct,
   totalRounds,
   totalTurns,
+  handOf,
+  freeCardOf,
+  freeCardId,
   roundNumber,
   seatNumber,
 } from './reducer';
 import { viewFor } from './view';
-import { gradeFor } from './types';
+import { gradeFor, FREE_CARD_MAX } from './types';
 import type { Action, GameSettings, GameState, Mode } from './types';
 
 const SETTINGS: GameSettings = {
@@ -693,6 +696,137 @@ describe('ラウンドの切れ目での仕切り直し', () => {
     s = playTurn(s);
     expect(roundNumber(s)).toBe(1);
     expect(s.players[0].hand.map((c) => c.id).join(',')).toBe(before);
+  });
+});
+
+describe('自由札', () => {
+  /** その人が自由札 + 手札の5音1枚 + 7音1枚で提出する（自由札は5音の位置に置く） */
+  function submitWithFree(s: GameState, playerId: string): GameState {
+    const hand = handOf(s, playerId);
+    const five = hand.filter((c) => c.mora === 5 && !c.free);
+    const seven = hand.filter((c) => c.mora === 7);
+    return reducer(s, {
+      type: 'SUBMIT',
+      playerId,
+      upperId: freeCardId(playerId),
+      middleId: seven[0].id,
+      lowerId: five[0].id,
+    });
+  }
+
+  it('最初は未記入で、手札には並ばない', () => {
+    const s = startOnline('dokudan');
+    expect(s.players[0].free).toEqual({ text: '', mora: null, usedRound: null });
+    // 山札から配られた6枚だけ。自由札は書くまで札にならない
+    expect(handOf(s, 'p1')).toHaveLength(6);
+    expect(freeCardOf(s, 'p1')).toBeNull();
+  });
+
+  it('言葉と位置を決めると手札に並ぶ', () => {
+    let s = startOnline('dokudan');
+    s = reducer(s, { type: 'SET_FREE_CARD', playerId: 'p1', text: '課長の顔', mora: 5 });
+    const free = freeCardOf(s, 'p1');
+    expect(free).not.toBeNull();
+    expect(free!.text).toBe('課長の顔');
+    expect(free!.mora).toBe(5);
+    expect(free!.free).toBe(true);
+    expect(handOf(s, 'p1')).toHaveLength(7); // 既存6枚 + 自由札
+  });
+
+  it('音数は検証しない。7音として出せば7音の札になる', () => {
+    let s = startOnline('dokudan');
+    s = reducer(s, { type: 'SET_FREE_CARD', playerId: 'p1', text: 'あ', mora: 7 });
+    expect(freeCardOf(s, 'p1')!.mora).toBe(7);
+    expect(handOf(s, 'p1').filter((c) => c.mora === 7)).toHaveLength(3);
+  });
+
+  it('何度でも書き直せる', () => {
+    let s = startOnline('dokudan');
+    s = reducer(s, { type: 'SET_FREE_CARD', playerId: 'p1', text: '一回目', mora: 5 });
+    s = reducer(s, { type: 'SET_FREE_CARD', playerId: 'p1', text: '二回目', mora: 7 });
+    s = reducer(s, { type: 'SET_FREE_CARD', playerId: 'p1', text: '三回目', mora: 5 });
+    expect(freeCardOf(s, 'p1')!.text).toBe('三回目');
+    expect(freeCardOf(s, 'p1')!.mora).toBe(5);
+  });
+
+  it('空白だけの言葉は受け付けず、長さは切り詰める', () => {
+    let s = startOnline('dokudan');
+    const before = s;
+    s = reducer(s, { type: 'SET_FREE_CARD', playerId: 'p1', text: '   ', mora: 5 });
+    expect(s).toBe(before);
+
+    s = reducer(s, { type: 'SET_FREE_CARD', playerId: 'p1', text: 'あ'.repeat(50), mora: 5 });
+    expect(freeCardOf(s, 'p1')!.text).toHaveLength(FREE_CARD_MAX);
+  });
+
+  it('交換には出せない', () => {
+    let s = startOnline('dokudan');
+    s = reducer(s, { type: 'SET_FREE_CARD', playerId: 'p1', text: '出せない', mora: 5 });
+    const before = s;
+    // 自由札を捨てようとしても、山札の手札に無いので丸ごと弾かれる
+    s = reducer(s, {
+      type: 'EXCHANGE',
+      playerId: 'p1',
+      discardIds: [freeCardId('p1')],
+      capturedIds: [],
+    });
+    expect(s).toBe(before);
+  });
+
+  it('使うとそのラウンドは手札から消え、次のラウンドで戻る', () => {
+    let s = start('dokudan', ['あ', 'い', 'う'], { rounds: 2, passAndPlay: false });
+    s = reducer(s, { type: 'SET_FREE_CARD', playerId: 'p1', text: '奥の手', mora: 5 });
+    s = submitWithFree(s, 'p1');
+
+    expect(s.players[1].free.usedRound).toBe(1);
+    expect(freeCardOf(s, 'p1')).toBeNull();
+    // 言葉は残る。次のラウンドでそのまま使ってもいいし書き直してもいい
+    expect(s.players[1].free.text).toBe('奥の手');
+
+    // ラウンド1を終わらせて次のラウンドへ
+    s = reducer(s, { type: 'TIMEOUT' });
+    for (let i = 0; i < 3; i++) {
+      s = reducer(s, { type: 'JUDGE', playerId: s.players[s.activeIndex].id, index: 0 });
+      s = reducer(s, { type: 'NEXT_TURN' });
+      if (roundNumber(s) === 2) break;
+      s = reducer(s, { type: 'TIMEOUT' });
+    }
+    expect(roundNumber(s)).toBe(2);
+    expect(freeCardOf(s, 'p1')).not.toBeNull(); // また使える
+  });
+
+  it('使い切ったあとは書き直せない', () => {
+    let s = startOnline('dokudan');
+    s = reducer(s, { type: 'SET_FREE_CARD', playerId: 'p1', text: '一度きり', mora: 5 });
+    s = submitWithFree(s, 'p1');
+    const before = s;
+    s = reducer(s, { type: 'SET_FREE_CARD', playerId: 'p1', text: 'やり直し', mora: 5 });
+    expect(s).toBe(before);
+  });
+
+  it('自分の手番でなければ書けない', () => {
+    const s = startOnline('dokudan');
+    // p0 は親なので詠まない＝手番のキューにいない
+    expect(reducer(s, { type: 'SET_FREE_CARD', playerId: 'p0', text: '親の札', mora: 5 })).toBe(s);
+  });
+
+  it('他人の自由札の中身は配らない', () => {
+    let s = startOnline('dokudan');
+    s = reducer(s, { type: 'SET_FREE_CARD', playerId: 'p1', text: '秘密の句', mora: 5 });
+    const seen = viewFor(s, 'p2');
+    expect(seen.players.find((p) => p.id === 'p1')!.free.text).toBe('');
+    expect(seen.players.find((p) => p.id === 'p1')!.free.mora).toBeNull();
+    // 自分の自由札は見える
+    expect(viewFor(s, 'p1').players.find((p) => p.id === 'p1')!.free.text).toBe('秘密の句');
+  });
+
+  it('時間切れの自動提出では自由札を使わない', () => {
+    let s = startOnline('dokudan');
+    s = reducer(s, { type: 'SET_FREE_CARD', playerId: 'p1', text: '勝手に使うな', mora: 5 });
+    s = reducer(s, { type: 'TIMEOUT' });
+    const mine = s.submissions.find((h) => h.authorId === 'p1')!;
+    expect([mine.upper, mine.middle, mine.lower].some((c) => c.free)).toBe(false);
+    expect(s.players[1].free.usedRound).toBeNull();
   });
 });
 

@@ -10,12 +10,34 @@ export type Card = {
   /** 「知らんけど」など、述語の形だが一語の決まり文句として下句にも置ける札 */
   idiom?: boolean;
   tags: string[];
+  /** 自由札（プレイヤーが自分で言葉を書く札）。山札には入らない */
+  free?: boolean;
 };
+
+/**
+ * 自由札。各プレイヤーが1枚だけ持ち、ラウンドに1回使える。
+ * 言葉は本人が書き、5音の位置と7音の位置のどちらで使うかも本人が決める。
+ * 音数は検証しない。自由に書けることがこの札の意味なので、
+ * 5音として出した言葉が実際に何音でも受け入れる。
+ */
+export type FreeCard = {
+  /** 書いた言葉。空なら未記入 */
+  text: string;
+  /** どちらの位置で使うか。未選択なら null */
+  mora: 5 | 7 | null;
+  /** 使い切ったラウンド番号（1始まり）。null ならまだ使える */
+  usedRound: number | null;
+};
+
+/** 自由札に書ける長さ。札の枠に収まる範囲に留める */
+export const FREE_CARD_MAX = 12;
 
 export type Player = {
   id: string;
   name: string;
+  /** 山札から配られた札。自由札はここには入らない */
   hand: Card[];
+  free: FreeCard;
   score: number;
   scoreHistory: number[];
 };
@@ -118,6 +140,8 @@ export type Action =
   | { type: 'TAKE_SEAT' }
   | { type: 'EXCHANGE'; playerId: string; discardIds: string[]; capturedIds: string[] }
   | { type: 'SUBMIT'; playerId: string; upperId: string; middleId: string; lowerId: string }
+  /** 自由札に言葉を書き、どちらの位置で使うかを決める。何度でも書き直せる */
+  | { type: 'SET_FREE_CARD'; playerId: string; text: string; mora: 5 | 7 }
   /**
    * 独断と偏見: 親が句を選ぶ。作者IDではなく表示順の位置で指定する。
    * こうしておけばオンラインで配信する句から作者IDを落とせるので、

@@ -1,8 +1,17 @@
 import { useState } from 'react';
 import type { Action, Card, GameState } from '../engine/types';
-import { activePlayer, playerById, remainingExchanges, roundNumber, seatNumber, totalRounds } from '../engine/reducer';
+import {
+  activePlayer,
+  freeCardOf,
+  handOf,
+  playerById,
+  remainingExchanges,
+  roundNumber,
+  seatNumber,
+  totalRounds,
+} from '../engine/reducer';
 import { remainingCards } from '../engine/view';
-import { CardView, HaikuView } from './parts';
+import { CardView, FreeCardEditor, HaikuView } from './parts';
 
 /** 選択中の札。時間切れの自動提出に渡すので画面より上で保持する */
 export type Draft = { upperId?: string; middleId?: string; lowerId?: string };
@@ -26,6 +35,7 @@ export function Turn({
   const [tab, setTab] = useState<'compose' | 'exchange'>('compose');
   const [tossing, setTossing] = useState<string[]>([]);
   const [claiming, setClaiming] = useState<string[]>([]);
+  const [editingFree, setEditingFree] = useState(false);
 
   const player = playerById(s, me);
   const submitted = s.submissions.some((h) => h.authorId === me) || !s.turnQueue.includes(me);
@@ -34,10 +44,14 @@ export function Turn({
   if (submitted) return <Waiting s={s} me={me} />;
 
   const left = remainingExchanges(s, me);
-  const five = player.hand.filter((c) => c.mora === 5);
-  const seven = player.hand.filter((c) => c.mora === 7);
+  // 自由札は山札の札と別扱いなので handOf で足す。交換タブでは出さない（交換不可）
+  const hand = handOf(s, me);
+  const freeCard = freeCardOf(s, me);
+  const freeUsed = player.free.usedRound === roundNumber(s);
+  const five = hand.filter((c) => c.mora === 5);
+  const seven = hand.filter((c) => c.mora === 7);
 
-  const card = (id?: string) => player.hand.find((c) => c.id === id) ?? null;
+  const card = (id?: string) => hand.find((c) => c.id === id) ?? null;
   const upper = card(draft.upperId);
   const middle = card(draft.middleId);
   const lower = card(draft.lowerId);
@@ -82,13 +96,37 @@ export function Turn({
     });
   }
 
-  const handProps = (c: Card) =>
-    tab === 'compose'
-      ? { selected: isPlaced(c), onClick: () => place(c) }
-      : { selected: tossing.includes(c.id), discarding: tossing.includes(c.id), onClick: () => toggleToss(c) };
+  const handProps = (c: Card) => {
+    if (tab === 'compose') {
+      return {
+        selected: isPlaced(c),
+        onClick: () => place(c),
+        ...(c.free ? { onEdit: () => setEditingFree(true) } : {}),
+      };
+    }
+    // 交換タブ。自由札は交換に出せないので押しても何も起きない
+    if (c.free) return { variant: 'static' as const };
+    return {
+      selected: tossing.includes(c.id),
+      discarding: tossing.includes(c.id),
+      onClick: () => toggleToss(c),
+    };
+  };
 
   return (
     <>
+      {editingFree && (
+        <FreeCardEditor
+          initialText={player.free.text}
+          initialMora={player.free.mora}
+          onCancel={() => setEditingFree(false)}
+          onDecide={(text, mora) => {
+            dispatch({ type: 'SET_FREE_CARD', playerId: me, text, mora });
+            setEditingFree(false);
+          }}
+        />
+      )}
+
       <div className="hdr-bar">
         <div className="hdr-group">
           <span className="hdr-badge">
@@ -193,11 +231,25 @@ export function Turn({
         </div>
 
         <div className="turn-side hand-tray">
-          <div className="label-mark">手札</div>
+          <div className="label-mark">
+            手札
+            <span className="free-note">自由札はラウンドに1枚・交換不可</span>
+          </div>
           <div className="hand">
             {[...five, ...seven].map((c) => (
               <CardView key={c.id} card={c} {...handProps(c)} />
             ))}
+            {/* 自由札。まだ書いていないときは白紙の札を出し、押すと記入画面が開く。
+                今ラウンド使い切ったあとは使用済みの札として置いておく */}
+            {!freeCard && (
+              <div
+                className={`card free blank${freeUsed ? ' spent' : ''}`}
+                onClick={() => !freeUsed && setEditingFree(true)}
+              >
+                <div className="text">{freeUsed ? '使用済' : '自由札'}</div>
+                <div className="reading">{freeUsed ? 'このラウンドは終わり' : '押して書く'}</div>
+              </div>
+            )}
           </div>
         </div>
       </div>

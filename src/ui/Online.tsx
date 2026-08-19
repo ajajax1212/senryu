@@ -37,7 +37,17 @@ export function Online({ onBack }: { onBack: () => void }) {
 
   return (
     <>
-      {deadline !== null && <DeadlineBar deadline={deadline} />}
+      {deadline !== null && (
+        // 審査・採点は2分、作句は5分。総時間を渡さないとバーが40%から始まる
+        <DeadlineBar
+          deadline={deadline}
+          total={
+            game.phase === 'judge' || game.phase === 'rate'
+              ? (game.settings.timeLimits.judge ?? 120)
+              : (game.settings.timeLimits.turn ?? 300)
+          }
+        />
+      )}
       {room.error && <p className="error">{room.error}</p>}
       <Game
         s={game}
@@ -111,9 +121,19 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
   const amHost = lobby.hostId === room.me;
   const url = `${location.origin}/r/${lobby.code}`;
   const [copied, setCopied] = useState(false);
+  // R18を入れるときは1台版と同じく一度確認を挟む（SPEC 3.3）。
+  // ホストの操作が全員の山札を変えるので、むしろオンラインのほうが要る
+  const [confirmingR18, setConfirmingR18] = useState(false);
   // ラウンド数はサーバーが持つ値をそのまま描く。ここでローカルに控えると
   // ホスト以外の画面が更新されず、選んだ数と表示がずれる
   const rounds = lobby.rounds;
+
+  function toggleDeck(id: DeckId, on: boolean) {
+    const deck = DECKS.find((d) => d.id === id)!;
+    if (!on && deck.rating === 'r18') return setConfirmingR18(true);
+    const next = on ? lobby.decks.filter((x) => x !== id) : [...lobby.decks, id];
+    room.configure({ decks: next as DeckId[] });
+  }
 
   async function copy() {
     try {
@@ -123,6 +143,33 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
     } catch {
       setCopied(false);
     }
+  }
+
+  if (confirmingR18) {
+    const spicy = DECKS.find((d) => d.id === 'spicy')!;
+    return (
+      <div className="col grow confirm-stage">
+        <div className="panel col">
+          <h2>下ネタデッキを入れますか</h2>
+          <p className="sub">
+            身体・行為・夜の街・修羅場を扱う直球の札が {spicy.count5 + spicy.count7}
+            枚入ります。参加者全員が了承しているか確認してください。
+          </p>
+          <button
+            className="primary wide"
+            onClick={() => {
+              room.configure({ decks: [...lobby.decks, 'spicy'] as DeckId[] });
+              setConfirmingR18(false);
+            }}
+          >
+            全員OK。入れる
+          </button>
+          <button className="ghost wide" onClick={() => setConfirmingR18(false)}>
+            やめておく
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -201,11 +248,7 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
               <div
                 key={d.id}
                 className={`deck-option${on ? ' on' : ''}${locked ? ' locked' : ''}`}
-                onClick={() => {
-                  if (locked) return;
-                  const next = on ? lobby.decks.filter((x) => x !== d.id) : [...lobby.decks, d.id];
-                  room.configure({ decks: next as DeckId[] });
-                }}
+                onClick={() => !locked && toggleDeck(d.id, on)}
               >
                 <div className="check">{on ? '✓' : ''}</div>
                 <div className="grow opt-line">

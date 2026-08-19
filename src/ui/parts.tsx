@@ -1,17 +1,21 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { Card, Haiku } from '../engine/types';
+import { FREE_CARD_MAX } from '../engine/types';
 
 export function CardView({
   card,
   selected,
   discarding,
   onClick,
+  onEdit,
   variant,
 }: {
   card: Card;
   selected?: boolean;
   discarding?: boolean;
   onClick?: () => void;
+  /** 自由札の書き直し。渡すと札の隅に筆ボタンが出る */
+  onEdit?: () => void;
   variant?: 'hand' | 'slot' | 'static';
 }) {
   const is7 = card.mora === 7;
@@ -20,6 +24,7 @@ export function CardView({
   const cls = [
     'card',
     is7 ? 'm7' : 'm5',
+    card.free ? 'free' : '',
     selected ? 'selected' : '',
     discarding ? 'discarding' : '',
     variant ?? (onClick ? '' : 'static'),
@@ -42,6 +47,19 @@ export function CardView({
       <div className="text">{card.text}</div>
       <div className="reading">{card.reading}</div>
       <div className="mora-badge">{card.mora}</div>
+      {onEdit && (
+        <button
+          type="button"
+          className="free-edit"
+          title="書き直す"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+        >
+          筆
+        </button>
+      )}
     </div>
   );
 }
@@ -114,14 +132,14 @@ export function Countdown({ seconds, onExpire }: { seconds: number; onExpire: ()
  * オンライン用の残り時間。締切そのものをサーバーから受け取って描くだけで、
  * 時間切れの処理はサーバーが行う。各ブラウザが勝手に判定すると結果がずれるため。
  */
-export function DeadlineBar({ deadline }: { deadline: number }) {
+export function DeadlineBar({ deadline, total }: { deadline: number; total: number }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(id);
   }, [deadline]);
 
-  return <TimerBar left={Math.max(0, Math.ceil((deadline - now) / 1000))} total={300} />;
+  return <TimerBar left={Math.max(0, Math.ceil((deadline - now) / 1000))} total={total} />;
 }
 
 /** 残り30秒を切ったら朱くする。見た目は1台版とオンラインで共通 */
@@ -135,6 +153,71 @@ function TimerBar({ left, total }: { left: number; total: number }) {
       </div>
       <div className="timer-label">
         残り {mm}:{ss}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 自由札の記入。
+ *
+ * 音数は検証しない。自由に書けることがこの札の意味なので、
+ * 「5音として使う」と宣言した言葉が実際に何音でも受け入れる。
+ * 決めたあとは札に戻すだけで、句に置くのは別の操作。
+ */
+export function FreeCardEditor({
+  initialText,
+  initialMora,
+  onDecide,
+  onCancel,
+}: {
+  initialText: string;
+  initialMora: 5 | 7 | null;
+  onDecide: (text: string, mora: 5 | 7) => void;
+  onCancel: () => void;
+}) {
+  const [text, setText] = useState(initialText);
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => ref.current?.focus(), []);
+
+  const trimmed = text.trim();
+  const ready = trimmed.length > 0;
+
+  return (
+    <div className="announce" onClick={onCancel}>
+      <div className="announce-card free-editor" onClick={(e) => e.stopPropagation()}>
+        <div className="announce-round">自由札</div>
+        <p className="announce-note">好きな言葉を書いて、どちらの位置で使うか決めてください。</p>
+
+        <input
+          ref={ref}
+          type="text"
+          value={text}
+          maxLength={FREE_CARD_MAX}
+          placeholder={`${FREE_CARD_MAX}文字まで`}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') onCancel();
+          }}
+        />
+        <div className="free-count">
+          {[...trimmed].length} / {FREE_CARD_MAX}文字
+        </div>
+
+        <div className="free-choose">
+          <button className="primary" disabled={!ready} onClick={() => onDecide(trimmed, 5)}>
+            五音として使う
+          </button>
+          <button className="primary" disabled={!ready} onClick={() => onDecide(trimmed, 7)}>
+            七音として使う
+          </button>
+        </div>
+        {initialMora && (
+          <p className="sub center">いまは{initialMora === 7 ? '七' : '五'}音の札になっています</p>
+        )}
+        <button className="ghost wide" onClick={onCancel}>
+          やめる
+        </button>
       </div>
     </div>
   );

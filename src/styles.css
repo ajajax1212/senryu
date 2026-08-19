@@ -1367,9 +1367,10 @@ input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; transform: 
 @media (min-width: 900px) {
   #root {
     max-width: 980px;
-    /* 作句画面が1画面に収まるかどうかは数pxで決まる。下の余白は詰めておく */
-    padding: 20px 32px 16px;
-    gap: 16px;
+    /* 作句画面が1画面に収まるかどうかは数pxで決まる。自由札が1枚増えたぶん、
+       下の余白と行間をもう一段詰めてある */
+    padding: 16px 32px 10px;
+    gap: 14px;
   }
 
   /* 表彰句と順位表を左右に。縦に積むと勝敗を見るのにスクロールが要る */
@@ -1448,3 +1449,99 @@ input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; transform: 
   .hand { gap: 16px; }
 }
 
+
+/* ── 自由札 ──
+   山札の札と取り違えないよう、和紙ではなく金の縁取りにする */
+.card.free {
+  background: linear-gradient(150deg, #fffdf5, #f3ecd8);
+  border-color: var(--gold);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3), 0 0 12px var(--gold-glow);
+}
+.card.free .text { color: #2a2418; }
+.card.free .mora-badge {
+  background: var(--gold-dark);
+  border-color: var(--gold-light);
+  color: #fffdf5;
+}
+/* まだ書いていない自由札 */
+.card.free.blank {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(198, 160, 82, 0.1);
+  border: 2px dashed var(--gold);
+  box-shadow: none;
+  cursor: pointer;
+}
+.card.free.blank .text {
+  writing-mode: horizontal-tb;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  color: var(--gold-light);
+}
+.card.free.blank .reading {
+  writing-mode: horizontal-tb;
+  font-size: 9px;
+  text-align: center;
+  color: var(--text-washi-muted);
+}
+.card.free.blank:hover { background: rgba(198, 160, 82, 0.18); }
+/* 使い切った自由札は押せない */
+.card.free.blank.spent {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-style: solid;
+  border-color: var(--border-washi);
+}
+.card.free.blank.spent:hover { background: rgba(198, 160, 82, 0.1); }
+
+/* 書き直しの筆ボタン。札の隅に小さく置く */
+.free-edit {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 11px;
+  line-height: 1;
+  border-radius: 50%;
+  background: var(--gold-dark);
+  border: 1px solid var(--gold-light);
+  color: #fffdf5;
+  box-shadow: none;
+  z-index: 2;
+}
+.free-edit:hover:not(:disabled) { background: var(--gold); transform: none; }
+.card { position: relative; }
+
+/* 手札の見出しに添える但し書き。行を増やすと作句画面が1画面に収まらない */
+.free-note {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--text-washi-muted);
+  margin-left: auto;
+}
+
+/* 記入画面 */
+.free-editor input[type='text'] {
+  width: 100%;
+  font-size: 20px;
+  text-align: center;
+  letter-spacing: 0.1em;
+}
+.free-count {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-washi-muted);
+}
+.free-choose {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+}

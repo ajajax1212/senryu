@@ -1,4 +1,5 @@
-import type { Action, Card, GameState, Haiku, Phase, Player, RoundResult } from './types';
+import type { Action, Card, FreeCard, GameState, Haiku, Phase, Player, RoundResult } from './types';
+import { FREE_CARD_MAX } from './types';
 import { HAND_5, HAND_7, cardsFor, makeRng, shuffle } from './cards';
 
 /**
@@ -48,6 +49,43 @@ export function roundNumber(s: GameState): number {
 /** そのラウンドの何人目か（1始まり） */
 export function seatNumber(s: GameState): number {
   return (s.turn % s.players.length) + 1;
+}
+
+/** 自由札のID。プレイヤーごとに一意にしておかないと提出句の中で衝突する */
+export function freeCardId(playerId: string): string {
+  return `free-${playerId}`;
+}
+
+/** 未記入の自由札 */
+export function emptyFreeCard(): FreeCard {
+  return { text: '', mora: null, usedRound: null };
+}
+
+/**
+ * 自由札を「札」として取り出す。
+ * 言葉と位置が決まっていて、かつ今ラウンドまだ使っていないときだけ手札に並ぶ。
+ */
+export function freeCardOf(s: GameState, playerId: string): Card | null {
+  const p = playerById(s, playerId);
+  if (!p || p.free.mora === null || !p.free.text) return null;
+  if (p.free.usedRound === roundNumber(s)) return null;
+  return {
+    id: freeCardId(playerId),
+    deck: 'standard',
+    mora: p.free.mora,
+    text: p.free.text,
+    reading: '',
+    tags: [],
+    free: true,
+  };
+}
+
+/** 画面に並べる手札。山札から配られた札のうしろに自由札を足す */
+export function handOf(s: GameState, playerId: string): Card[] {
+  const p = playerById(s, playerId);
+  if (!p) return [];
+  const free = freeCardOf(s, playerId);
+  return free ? [...p.hand, free] : p.hand;
 }
 
 export function remainingExchanges(s: GameState, playerId: string): number {
@@ -155,13 +193,22 @@ function submit(s: GameState, me: Player, upper?: Card, middle?: Card, lower?: C
 
   const haiku: Haiku = { authorId: me.id, upper, middle, lower };
   const usedIds = [upper.id, middle.id, lower.id];
+  // 自由札を混ぜたら、そのラウンドではもう使えない。
+  // 山札の札と違って手元から消えるわけではないので、使った印を別に持つ
+  const usedFree = [upper, middle, lower].some((c) => c.free);
   const queue = s.turnQueue.filter((id) => id !== me.id);
   const next: GameState = {
     ...s,
     submissions: [...s.submissions, haiku],
     turnQueue: queue,
     players: s.players.map((p) =>
-      p.id === me.id ? { ...p, hand: p.hand.filter((c) => !usedIds.includes(c.id)) } : p,
+      p.id === me.id
+        ? {
+            ...p,
+            hand: p.hand.filter((c) => !usedIds.includes(c.id)),
+            free: usedFree ? { ...p.free, usedRound: roundNumber(s) } : p.free,
+          }
+        : p,
     ),
   };
 
@@ -254,6 +301,7 @@ export function reducer(state: GameState, action: Action): GameState {
         id: `p${i}`,
         name,
         hand: hands[i],
+        free: emptyFreeCard(),
         score: 0,
         scoreHistory: [],
       }));
@@ -291,6 +339,8 @@ export function reducer(state: GameState, action: Action): GameState {
       if (remainingExchanges(state, me.id) <= 0) return state;
       if (action.discardIds.length === 0) return state;
 
+      // 自由札は me.hand に入っていないので、ここで拾えず捨てられない。
+      // 「交換不可」はこの構造で担保している（見つからない札を混ぜた時点で弾かれる）
       const out = me.hand.filter((c) => action.discardIds.includes(c.id));
       const kept = me.hand.filter((c) => !action.discardIds.includes(c.id));
       if (out.length !== action.discardIds.length) return state;
@@ -326,8 +376,27 @@ export function reducer(state: GameState, action: Action): GameState {
     case 'SUBMIT': {
       const me = playerById(state, action.playerId);
       if (!me || state.phase !== 'turn' || !canAct(state, me.id)) return state;
-      const find = (id: string) => me.hand.find((c) => c.id === id);
+      const hand = handOf(state, me.id);
+      const find = (id: string) => hand.find((c) => c.id === id);
       return submit(state, me, find(action.upperId), find(action.middleId), find(action.lowerId));
+    }
+
+    case 'SET_FREE_CARD': {
+      const me = playerById(state, action.playerId);
+      if (!me || state.phase !== 'turn' || !canAct(state, me.id)) return state;
+      // 今ラウンドもう使った札は書き直せない。出した句が後から変わってしまう
+      if (me.free.usedRound === roundNumber(state)) return state;
+
+      const text = action.text.trim().slice(0, FREE_CARD_MAX);
+      if (!text) return state;
+      if (action.mora !== 5 && action.mora !== 7) return state;
+
+      return {
+        ...state,
+        players: state.players.map((p) =>
+          p.id === me.id ? { ...p, free: { ...p.free, text, mora: action.mora } } : p,
+        ),
+      };
     }
 
     case 'JUDGE': {

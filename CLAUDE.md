@@ -22,7 +22,7 @@ TypeScript / React 19 / Vite 6 / Express 4 / Socket.IO 4 / Vitest 2。ESM（`"ty
 | `npm.cmd run build` | クライアント（`dist/`）とサーバー（`dist-server/`）の両方 |
 | `npm.cmd run dev` | Vite 開発サーバー（5173）。**クライアントのみ＝1台版の確認用** |
 | `npm.cmd run dev:server` | サーバーだけ watch 起動 |
-| `npm.cmd test` | Vitest 65件（エンジン54 / 通信イベント6 / 札データ5） |
+| `npm.cmd test` | Vitest 76件（エンジン65 / 通信イベント6 / 札データ5） |
 | `npm.cmd run validate` | 札データの検証 |
 | `npm.cmd run cards:export` / `cards:import` | 札データの CSV 往復。**import 後は自動で validate が走る** |
 
@@ -59,6 +59,9 @@ data/decks/     standard.json / meme.json / spicy.json
 
 - **5音札は上の句にも下の句にも使える**（順不同）。7音札は中の句だけ。
   同じ手札でも並べ替えで意味が変わる、そこがこのゲームの中心的な面白さ。
+- **自由札は山札の札ではない。** `player.hand` には入らず `player.free` が持つ。
+  画面に並べるときは `handOf(s, id)` を通す。音数は検証しない（自由に書けることが
+  この札の意味）。`viewFor` は書いた言葉を他人に配らない。
 - **1ラウンド = 全員が1回ずつ親（提出者）をやること。** 総手番数は
   ラウンド数 × 人数。ここは一度取り違えて直した経緯があるので、
   「ラウンド」と「手番」を混同しない。
