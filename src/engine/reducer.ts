@@ -167,6 +167,7 @@ function beginTurn(s: GameState, turn: number): GameState {
       activeIndex,
       submissions: [],
       ratings: {},
+      predictions: {},
       exchangesUsed: {},
       lastResult: null,
     },
@@ -279,6 +280,9 @@ function applyJudge(s: GameState, index: number): GameState {
     mode: s.mode,
     submissions: s.submissions,
     winnerId: chosen.authorId,
+    // 予想の答え合わせに使う。位置で持つのは、句から作者IDを落としても照合できるようにするため
+    winnerIndex: index,
+    predictions: s.predictions,
   };
   return {
     ...s,
@@ -338,6 +342,7 @@ export function reducer(state: GameState, action: Action): GameState {
         exchangesUsed: {},
         submissions: [],
         ratings: {},
+        predictions: {},
         lastResult: null,
         history: [],
         seed,
@@ -421,6 +426,18 @@ export function reducer(state: GameState, action: Action): GameState {
       return applyJudge(state, action.index);
     }
 
+    case 'PREDICT': {
+      // 親は選ぶ側なので予想しない。得点には関わらないので、選ぶまで何度でも変えられる
+      if (state.phase !== 'judge' || state.mode !== 'dokudan') return state;
+      if (action.playerId === activePlayer(state).id) return state;
+      if (!playerById(state, action.playerId)) return state;
+      if (!shuffledSubmissions(state)[action.index]) return state;
+      return {
+        ...state,
+        predictions: { ...state.predictions, [action.playerId]: action.index },
+      };
+    }
+
     case 'RATE': {
       if (state.phase !== 'rate' || !canAct(state, action.playerId)) return state;
       return applyRate(state, action.playerId, action.score);
@@ -499,6 +516,16 @@ export function reducer(state: GameState, action: Action): GameState {
     default:
       return state;
   }
+}
+
+/**
+ * 勝ち句を当てた人の名前。得点はしないので、結果画面で読み上げるためだけに使う。
+ */
+export function predictionHits(s: GameState, r: RoundResult): string[] {
+  if (r.winnerIndex === undefined || !r.predictions) return [];
+  return Object.entries(r.predictions)
+    .filter(([, idx]) => idx === r.winnerIndex)
+    .map(([id]) => playerById(s, id)?.name ?? '?');
 }
 
 /** 審査画面に出す並び。提出順から作者が割れないようラウンドごとに固定の順で混ぜる */

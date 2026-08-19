@@ -10,6 +10,7 @@ import {
   totalTurns,
   handOf,
   phaseProgress,
+  predictionHits,
   freeCardOf,
   freeCardId,
   roundNumber,
@@ -859,6 +860,101 @@ describe('進み具合', () => {
     s = reducer(s, { type: 'TIMEOUT' });
     s = reducer(s, { type: 'JUDGE', playerId: 'p0', index: 0 });
     expect(phaseProgress(s)).toBeNull();
+  });
+});
+
+describe('勝ち句予想', () => {
+  /** 全員に提出させて審査フェーズまで進める */
+  function toJudge(names = ['あ', 'い', 'う', 'え']): GameState {
+    let s = startOnline('dokudan', names);
+    for (const p of s.players.slice(1)) s = submitFor(s, p.id);
+    expect(s.phase).toBe('judge');
+    return s;
+  }
+
+  it('親以外が表示順の位置で予想できる', () => {
+    let s = toJudge();
+    s = reducer(s, { type: 'PREDICT', playerId: 'p1', index: 2 });
+    s = reducer(s, { type: 'PREDICT', playerId: 'p2', index: 0 });
+    expect(s.predictions).toEqual({ p1: 2, p2: 0 });
+  });
+
+  it('親は予想できない', () => {
+    const s = toJudge();
+    expect(reducer(s, { type: 'PREDICT', playerId: 'p0', index: 0 })).toBe(s);
+  });
+
+  it('何度でも選び直せる', () => {
+    let s = toJudge();
+    s = reducer(s, { type: 'PREDICT', playerId: 'p1', index: 0 });
+    s = reducer(s, { type: 'PREDICT', playerId: 'p1', index: 2 });
+    expect(s.predictions).toEqual({ p1: 2 });
+  });
+
+  it('無い位置は受け付けない', () => {
+    const s = toJudge();
+    expect(reducer(s, { type: 'PREDICT', playerId: 'p1', index: 9 })).toBe(s);
+    expect(reducer(s, { type: 'PREDICT', playerId: 'p1', index: -1 })).toBe(s);
+  });
+
+  it('審査フェーズ以外では予想できない', () => {
+    const s = startOnline('dokudan');
+    expect(s.phase).toBe('turn');
+    expect(reducer(s, { type: 'PREDICT', playerId: 'p1', index: 0 })).toBe(s);
+  });
+
+  it('コンテストには無い', () => {
+    let s = startOnline('contest', ['あ', 'い', 'う']);
+    s = submitFor(s, 'p0');
+    expect(reducer(s, { type: 'PREDICT', playerId: 'p1', index: 0 })).toBe(s);
+  });
+
+  it('当てた人だけが結果に出る。得点は動かない', () => {
+    let s = toJudge();
+    s = reducer(s, { type: 'PREDICT', playerId: 'p1', index: 1 });
+    s = reducer(s, { type: 'PREDICT', playerId: 'p2', index: 1 });
+    s = reducer(s, { type: 'PREDICT', playerId: 'p3', index: 0 });
+
+    const scoresBefore = s.players.map((p) => p.score);
+    s = reducer(s, { type: 'JUDGE', playerId: 'p0', index: 1 });
+
+    expect(s.lastResult!.winnerIndex).toBe(1);
+    expect(predictionHits(s, s.lastResult!).sort()).toEqual(['い', 'う']);
+
+    // 予想が当たっても点は入らない。増えるのは選ばれた句の作者の1点だけ
+    const winner = s.lastResult!.winnerId;
+    for (const p of s.players) {
+      const before = scoresBefore[s.players.indexOf(p)];
+      expect(p.score).toBe(p.id === winner ? before + 1 : before);
+    }
+  });
+
+  it('誰も当てられなければ空', () => {
+    let s = toJudge();
+    s = reducer(s, { type: 'PREDICT', playerId: 'p1', index: 0 });
+    s = reducer(s, { type: 'JUDGE', playerId: 'p0', index: 2 });
+    expect(predictionHits(s, s.lastResult!)).toEqual([]);
+  });
+
+  it('手番が変わると予想は消える', () => {
+    let s = toJudge(['あ', 'い', 'う']);
+    s = reducer(s, { type: 'PREDICT', playerId: 'p1', index: 0 });
+    s = reducer(s, { type: 'JUDGE', playerId: 'p0', index: 0 });
+    s = reducer(s, { type: 'NEXT_TURN' });
+    expect(s.predictions).toEqual({});
+  });
+
+  it('締まるまで他人の予想は配らない', () => {
+    let s = toJudge();
+    s = reducer(s, { type: 'PREDICT', playerId: 'p1', index: 0 });
+    s = reducer(s, { type: 'PREDICT', playerId: 'p2', index: 1 });
+
+    expect(viewFor(s, 'p1').predictions).toEqual({ p1: 0 });
+    expect(viewFor(s, 'p3').predictions).toEqual({});
+
+    s = reducer(s, { type: 'JUDGE', playerId: 'p0', index: 0 });
+    // 結果が出たら全員ぶん見える。答え合わせのため
+    expect(viewFor(s, 'p3').predictions).toEqual({ p1: 0, p2: 1 });
   });
 });
 

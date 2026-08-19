@@ -1640,3 +1640,33 @@ input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; transform: 
   color: var(--gold-light);
   white-space: nowrap;
 }
+
+/* ── 勝ち句予想 ──
+   得点には関わらないので、選ばれた句の金枠とは別の色（松葉）で示す */
+.guess-slot { position: relative; }
+.guess-slot .haiku { transition: border-color 0.15s, box-shadow 0.15s; }
+.guess-slot.picked .haiku {
+  border-color: var(--matsuba);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 16px var(--matsuba-glow);
+}
+.guess-mark {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-poem);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #f5f2e9;
+  background: var(--matsuba);
+  border: 1px solid rgba(245, 242, 233, 0.4);
+  border-radius: 2px;
+  padding: 2px 10px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.guess-result {
+  font-weight: 700;
+  color: var(--gold-light);
+}

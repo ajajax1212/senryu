@@ -56,6 +56,12 @@ export function viewFor(s: GameState, me: string): PlayerView {
         : isJudging
           ? []
           : s.submissions,
+    // 予想も採点と同じ。締まる前に他人の予想が見えると答え合わせの意味がなくなる
+    predictions: settled
+      ? s.predictions
+      : me in s.predictions
+        ? { [me]: s.predictions[me] }
+        : {},
     // 採点中は他人が何点入れたか見えてはいけない。自分の点だけ残す
     ratings: settled
       ? s.ratings

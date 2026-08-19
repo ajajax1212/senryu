@@ -22,7 +22,7 @@ TypeScript / React 19 / Vite 6 / Express 4 / Socket.IO 4 / Vitest 2。ESM（`"ty
 | `npm.cmd run build` | クライアント（`dist/`）とサーバー（`dist-server/`）の両方 |
 | `npm.cmd run dev` | Vite 開発サーバー（5173）。**クライアントのみ＝1台版の確認用** |
 | `npm.cmd run dev:server` | サーバーだけ watch 起動 |
-| `npm.cmd test` | Vitest 79件（エンジン68 / 通信イベント6 / 札データ5） |
+| `npm.cmd test` | Vitest 89件（エンジン78 / 通信イベント6 / 札データ5） |
 | `npm.cmd run validate` | 札データの検証 |
 | `npm.cmd run cards:export` / `cards:import` | 札データの CSV 往復。**import 後は自動で validate が走る** |
 
@@ -65,6 +65,8 @@ data/decks/     standard.json / meme.json / spicy.json
 - **1ラウンド = 全員が1回ずつ親（提出者）をやること。** 総手番数は
   ラウンド数 × 人数。ここは一度取り違えて直した経緯があるので、
   「ラウンド」と「手番」を混同しない。
+- **勝ち句予想（`PREDICT`）は得点に関わらない。** 待ち時間を能動的にするためだけの
+  仕掛けなので、順位計算には一切入れない。
 - **`JUDGE` は作者IDではなく表示順の位置（index）で指定する。** そうしておけば
   配信する句から作者IDを落とせて、通信を覗いても誰の句か分からない。
 - **`viewFor` は手札だけでなく山札の中身と乱数シードも落とす。** シードを渡すと

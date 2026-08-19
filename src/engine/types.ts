@@ -104,6 +104,10 @@ export type RoundResult = {
   mode: Mode;
   submissions: Haiku[];
   winnerId?: string;
+  /** 独断と偏見: 親が選んだ句の表示位置。予想が当たったかの照合に使う */
+  winnerIndex?: number;
+  /** 独断と偏見: 予想した人 -> 予想した表示位置 */
+  predictions?: Record<string, number>;
   ratings?: Record<string, number>;
   average?: number;
 };
@@ -126,6 +130,11 @@ export type GameState = {
   exchangesUsed: Record<string, number>;
   submissions: Haiku[];
   ratings: Record<string, number>;
+  /**
+   * 独断と偏見の勝ち句予想。playerId -> 表示順の位置。
+   * 得点には一切関わらない。親が選ぶまでの待ち時間を能動的にするためだけのもの。
+   */
+  predictions: Record<string, number>;
   lastResult: RoundResult | null;
   /** 確定したラウンド結果を古い順に積む。総合結果の振り返りで使う */
   history: RoundResult[];
@@ -149,6 +158,11 @@ export type Action =
    */
   | { type: 'JUDGE'; playerId: string; index: number }
   | { type: 'RATE'; playerId: string; score: number }
+  /**
+   * 独断と偏見: 親がどれを選ぶか予想する。JUDGE と同じく表示順の位置で指定する
+   * ので、予想を配っても誰の句かは割れない。何度でも選び直せる。
+   */
+  | { type: 'PREDICT'; playerId: string; index: number }
   | {
       type: 'TIMEOUT';
       playerId?: string;

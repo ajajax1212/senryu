@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
 import type { Action, GameState, Haiku } from '../engine/types';
-import { activePlayer, playerById, ranking, roundNumber, seatNumber, totalTurns } from '../engine/reducer';
+import {
+  activePlayer,
+  playerById,
+  predictionHits,
+  ranking,
+  roundNumber,
+  seatNumber,
+  totalTurns,
+} from '../engine/reducer';
 import { gradeFor } from '../engine/types';
 import { HaikuView } from './parts';
 import { ProgressBar } from './Turn';
@@ -18,15 +26,28 @@ export function Judge({
 }) {
   const host = activePlayer(s);
   if (me !== host.id) {
+    // 待っているだけの時間を、当てにいく時間に変える。得点には関わらない
+    const guess = s.predictions[me];
     return (
       <>
         <h2>{host.name} が選んでいます</h2>
-        <p className="sub center">全員の句が出そろいました。親の独断と偏見をお待ちください。</p>
+        <p className="sub center">
+          どれが選ばれるか予想してみてください。点数には関係ありません。
+        </p>
         <div className="board">
           {board.map((h, i) => (
-            <HaikuView key={i} haiku={h} />
+            <div key={i} className={`guess-slot${guess === i ? ' picked' : ''}`}>
+              <HaikuView
+                haiku={h}
+                onClick={() => dispatch({ type: 'PREDICT', playerId: me, index: i })}
+              />
+              {guess === i && <div className="guess-mark">予想</div>}
+            </div>
           ))}
         </div>
+        <p className="sub center">
+          {guess === undefined ? '句をタップすると予想できます' : '選び直せます'}
+        </p>
       </>
     );
   }
@@ -124,6 +145,7 @@ export function RoundResult({
 
   if (!r) return null;
   const name = (id: string) => playerById(s, id)?.name ?? '?';
+  const hits = predictionHits(s, r);
   const last = s.turn + 1 >= totalTurns(s);
 
   return (
@@ -163,6 +185,11 @@ export function RoundResult({
                 <HaikuView key={h.authorId} haiku={h} author={name(h.authorId)} variant="lost" />
               ))}
           </div>
+          {r.predictions && Object.keys(r.predictions).length > 0 && (
+            <p className="sub center guess-result">
+              {hits.length > 0 ? `的中 — ${hits.join('、')}` : '当てた人はいませんでした'}
+            </p>
+          )}
         </>
       ) : (
         <>
