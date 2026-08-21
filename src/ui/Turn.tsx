@@ -3,11 +3,11 @@ import type { Action, Card, GameState } from '../engine/types';
 import {
   activePlayer,
   freeCardOf,
+  freeCardUsed,
   handOf,
   phaseProgress,
   playerById,
   remainingExchanges,
-  roundNumber,
 } from '../engine/reducer';
 import { remainingCards } from '../engine/view';
 import { CardView, FreeCardEditor, HaikuView, PhaseBar, Roster } from './parts';
@@ -67,7 +67,7 @@ export function Turn({
   // 自由札は山札の札と別扱いなので handOf で足す。交換タブでは出さない（交換不可）
   const hand = handOf(s, me);
   const freeCard = freeCardOf(s, me);
-  const freeUsed = player.free.usedRound === roundNumber(s);
+  const freeUsed = freeCardUsed(s, me);
   // 五音の束・七音の束・自由札、の三つに分けて並べる。
   // 以前は handOf の並び（自由札が宣言した音数の群に混ざる）をそのまま出していたので、
   // 「五音として使う」と書き直すたびに自由札の位置が動き、目で追う先が毎回変わっていた。

@@ -8,6 +8,8 @@ import { viewFor } from '../src/engine/view';
 import { DEFAULT_TIME_LIMITS, type Action, type DeckId, type Mode } from '../src/engine/types';
 import { EV, clampRounds } from '../src/net/events';
 import {
+  ARCHIVE_MAX,
+  type ArchivedHaiku,
   addPlayer,
   createRoom,
   getRoom,
@@ -41,9 +43,39 @@ function lobbyState(room: Room) {
     // ラウンド数も配る。配らないとホスト以外の画面が既定値のままになり、
     // 「5ラウンドで始めたのに3と表示されている」というズレが出る
     rounds: room.rounds,
+    freeCardPerTurn: room.freeCardPerTurn,
     players: room.players.map((p) => ({ id: p.id, name: p.name, connected: p.connected })),
     started: room.game !== null,
+    // 感想戦はロビーに戻ったときだけ見る。ゲーム中まで配ると
+    // 1手ごとに数十KBを全員へ送ることになるので、そのときだけ載せる
+    archive: room.game ? [] : room.archive,
   };
+}
+
+/**
+ * 終わった一戦の句を部屋に残す。ロビーで感想戦をするため。
+ * 名前はこの時点で解決しておく。あとで誰かが抜けると id から引けなくなる。
+ */
+function archiveGame(room: Room): void {
+  if (!room.game) return;
+  const nameOf = (id: string) => room.game!.players.find((p) => p.id === id)?.name ?? '?';
+  room.games += 1;
+  const added: ArchivedHaiku[] = [];
+  for (const r of room.game.history) {
+    for (const h of r.submissions) {
+      added.push({
+        game: room.games,
+        mode: r.mode,
+        authorName: nameOf(h.authorId),
+        upper: h.upper.text,
+        middle: h.middle.text,
+        lower: h.lower.text,
+        ...(r.winnerId === h.authorId ? { won: true } : {}),
+        ...(r.average !== undefined ? { average: r.average } : {}),
+      });
+    }
+  }
+  room.archive = [...room.archive, ...added].slice(-ARCHIVE_MAX);
 }
 
 /**
@@ -179,12 +211,28 @@ io.on('connection', (socket) => {
 
   socket.on(
     EV.configure,
-    ({ code, mode, decks, rounds }: { code: string; mode?: Mode; decks?: DeckId[]; rounds?: number }, ack?: Ack) => {
+    (
+      {
+        code,
+        mode,
+        decks,
+        rounds,
+        freeCardPerTurn,
+      }: {
+        code: string;
+        mode?: Mode;
+        decks?: DeckId[];
+        rounds?: number;
+        freeCardPerTurn?: boolean;
+      },
+      ack?: Ack,
+    ) => {
       withRoom(socket, code, ack, (room) => {
         if (!requireHost(room, socket, ack)) return;
         if (room.game) return ack?.({ ok: false, error: 'もう始まっています' });
         if (mode) room.mode = mode;
         if (decks) room.decks = ['standard', ...decks.filter((d) => d !== 'standard')];
+        if (freeCardPerTurn !== undefined) room.freeCardPerTurn = Boolean(freeCardPerTurn);
         if (rounds !== undefined) {
           // クライアントの言い値をそのまま入れない。1〜5以外を通すと
           // totalTurns がその数×人数を返し、終わらないゲームができてしまう
@@ -211,6 +259,7 @@ io.on('connection', (socket) => {
         settings: {
           decks: room.decks as DeckId[],
           rounds: room.rounds,
+          freeCardPerTurn: room.freeCardPerTurn,
           exchangeLimit: 2,
           anonymousSubmission: true,
           revealRaters: true,
@@ -234,6 +283,8 @@ io.on('connection', (socket) => {
       if (room.game.phase !== 'gameover') {
         return ack?.({ ok: false, error: 'まだ終わっていません' });
       }
+      // 句を残してから捨てる。ロビーで感想戦をするため
+      archiveGame(room);
       room.game = null;
       ack?.({ ok: true });
       broadcast(room);

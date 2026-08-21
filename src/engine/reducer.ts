@@ -58,17 +58,29 @@ export function freeCardId(playerId: string): string {
 
 /** 未記入の自由札 */
 export function emptyFreeCard(): FreeCard {
-  return { text: '', mora: null, usedRound: null };
+  return { text: '', mora: null, usedTurn: null };
+}
+
+/**
+ * 自由札をもう使ったか。
+ * 既定はラウンドに1回。ロビーで「毎ターン」にすると手番ごとに戻る。
+ */
+export function freeCardUsed(s: GameState, playerId: string): boolean {
+  const p = playerById(s, playerId);
+  if (!p || p.free.usedTurn === null) return false;
+  if (s.settings.freeCardPerTurn) return p.free.usedTurn === s.turn;
+  const n = s.players.length;
+  return Math.floor(p.free.usedTurn / n) === Math.floor(s.turn / n);
 }
 
 /**
  * 自由札を「札」として取り出す。
- * 言葉と位置が決まっていて、かつ今ラウンドまだ使っていないときだけ手札に並ぶ。
+ * 言葉と位置が決まっていて、かつまだ使えるときだけ手札に並ぶ。
  */
 export function freeCardOf(s: GameState, playerId: string): Card | null {
   const p = playerById(s, playerId);
   if (!p || p.free.mora === null || !p.free.text) return null;
-  if (p.free.usedRound === roundNumber(s)) return null;
+  if (freeCardUsed(s, playerId)) return null;
   return {
     id: freeCardId(playerId),
     deck: 'standard',
@@ -224,7 +236,7 @@ function submit(s: GameState, me: Player, upper?: Card, middle?: Card, lower?: C
         ? {
             ...p,
             hand: p.hand.filter((c) => !usedIds.includes(c.id)),
-            free: usedFree ? { ...p.free, usedRound: roundNumber(s) } : p.free,
+            free: usedFree ? { ...p.free, usedTurn: s.turn } : p.free,
           }
         : p,
     ),
@@ -406,8 +418,8 @@ export function reducer(state: GameState, action: Action): GameState {
     case 'SET_FREE_CARD': {
       const me = playerById(state, action.playerId);
       if (!me || state.phase !== 'turn' || !canAct(state, me.id)) return state;
-      // 今ラウンドもう使った札は書き直せない。出した句が後から変わってしまう
-      if (me.free.usedRound === roundNumber(state)) return state;
+      // もう使った札は書き直せない。出した句が後から変わってしまう
+      if (freeCardUsed(state, me.id)) return state;
 
       const text = action.text.trim().slice(0, FREE_CARD_MAX);
       if (!text) return state;

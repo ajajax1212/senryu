@@ -20,7 +20,7 @@ export type SfxName =
   | 'draw'
   /** 提出。判を押す直前の「ぽん」 */
   | 'submit'
-  /** 発表の幕開け。鈴 */
+  /** 発表の幕開け。太鼓の二つ打ち（ドドン） */
   | 'chime'
   /** 落款が押される。低い一撃 */
   | 'stamp'
@@ -117,6 +117,24 @@ function noise(ac: AudioContext, opt: { dur: number; freq: number; q: number; ga
   src.start(t0);
 }
 
+/** 太鼓の一打。胴の鳴りと皮の当たりを重ねる */
+function taiko(
+  ac: AudioContext,
+  opt: { at: number; gain: number; from: number; to: number; dur: number },
+): void {
+  tone(ac, { type: 'sine', from: opt.from, to: opt.to, dur: opt.dur, gain: opt.gain, at: opt.at });
+  // 倍音を少しだけ足すと「ボッ」ではなく「ドッ」になる
+  tone(ac, {
+    type: 'triangle',
+    from: opt.from * 2,
+    to: opt.to * 2,
+    dur: opt.dur * 0.35,
+    gain: opt.gain * 0.3,
+    at: opt.at,
+  });
+  noise(ac, { dur: 0.06, freq: 320, q: 0.5, gain: opt.gain * 0.5, at: opt.at });
+}
+
 export function play(name: SfxName): void {
   const ac = audio();
   if (!ac) return;
@@ -139,10 +157,12 @@ export function play(name: SfxName): void {
       tone(ac, { type: 'sine', from: 880, dur: 0.22, gain: 0.05, at: 0.08 });
       break;
     case 'chime':
-      // 鈴。基音と非整数倍音を重ねると金属らしく濁る
-      tone(ac, { type: 'sine', from: 1244, dur: 1.1, gain: 0.07 });
-      tone(ac, { type: 'sine', from: 1867, dur: 0.9, gain: 0.04 });
-      tone(ac, { type: 'sine', from: 2489, dur: 0.6, gain: 0.02 });
+      // 太鼓の二つ打ち「ドドン」。
+      // 鈴（高い正弦の重ね）は耳に刺さるので、低い胴の鳴りに寄せた。
+      // 胴＝周波数を急に落とす正弦、皮の当たり＝低めに絞ったノイズ。
+      // 二打目を強く長くすると「ドドン」と締まって聞こえる
+      taiko(ac, { at: 0, gain: 0.18, from: 150, to: 52, dur: 0.26 });
+      taiko(ac, { at: 0.17, gain: 0.26, from: 132, to: 42, dur: 0.55 });
       break;
     case 'stamp':
       tone(ac, { type: 'sine', from: 180, to: 60, dur: 0.16, gain: 0.16 });

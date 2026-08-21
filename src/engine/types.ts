@@ -25,8 +25,12 @@ export type FreeCard = {
   text: string;
   /** どちらの位置で使うか。未選択なら null */
   mora: 5 | 7 | null;
-  /** 使い切ったラウンド番号（1始まり）。null ならまだ使える */
-  usedRound: number | null;
+  /**
+   * 使い切った手番（0始まり）。null ならまだ使える。
+   * 「ラウンドに1回」なのか「毎ターン」なのかは settings.freeCardPerTurn 次第なので、
+   * ここには手番そのものを持ち、判定は freeCardUsed() に任せる。
+   */
+  usedTurn: number | null;
 };
 
 /** 自由札に書ける長さ。札の枠に収まる範囲に留める */
@@ -63,6 +67,11 @@ export type GameSettings = {
    * したがって総手番数は rounds × 人数 になる。
    */
   rounds?: number;
+  /**
+   * 自由札を毎ターン使えるようにするか。
+   * 既定（false）はラウンドに1回だけ。true なら手番ごとに切り直せる。
+   */
+  freeCardPerTurn?: boolean;
   /** 1ラウンドあたりの交換回数 */
   exchangeLimit: number;
   /** 独断と偏見モードで提出句を匿名表示するか */

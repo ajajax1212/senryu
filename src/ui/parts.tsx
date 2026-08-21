@@ -8,6 +8,7 @@ import {
 } from 'react';
 import type { Card, GameState, Haiku } from '../engine/types';
 import { FREE_CARD_MAX } from '../engine/types';
+import type { ArchivedHaiku } from '../net/useRoom';
 import { activePlayer, roundNumber, seatNumber, totalRounds } from '../engine/reducer';
 import { setSfxEnabled, sfxEnabled, subscribeSfx } from './sound';
 
@@ -344,6 +345,90 @@ export function Roster({
           <span className="seat-state">{label[x.state]}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * 句をXに流す。
+ *
+ * 画像は作らず intent のURLを開くだけ。投稿するかどうかは向こうの画面で決められるので、
+ * 押した瞬間に世に出ることはない。下ネタ札の句もそのまま本文に載るので、
+ * 「押したら投稿される」ボタンには絶対にしないこと。
+ */
+export function shareOnX(poem: { upper: string; middle: string; lower: string }, author?: string): void {
+  const lines = [`${poem.upper}／${poem.middle}／${poem.lower}`];
+  if (author) lines.push('', `― ${author}`);
+  lines.push('', '#五七五ゲーム');
+  const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(lines.join('\n'))}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+/**
+ * その部屋で詠まれた句を並べる感想戦の画面。
+ *
+ * ロビーに戻るたびに開ける。ロビー自体は1画面に収める約束なので、
+ * 常設の枠ではなく重ねて出す。ここは眺める画面なので縦に伸びてよい。
+ */
+export function PoemGallery({
+  poems,
+  onClose,
+}: {
+  poems: ArchivedHaiku[];
+  onClose: () => void;
+}) {
+  // 新しい戦から見せる。直前の一戦の話をしたくて開くことがほとんど
+  const games = [...new Set(poems.map((p) => p.game))].sort((a, b) => b - a);
+
+  return (
+    <div className="announce" onClick={onClose}>
+      <div className="gallery-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="gallery-head">
+          <div className="label-mark">この部屋の句（{poems.length}）</div>
+          <button className="ghost" onClick={onClose}>
+            閉じる
+          </button>
+        </div>
+
+        {poems.length === 0 ? (
+          <p className="sub center">まだ一戦も終わっていません。</p>
+        ) : (
+          <div className="gallery-scroll">
+            {games.map((g) => (
+              <div key={g} className="gallery-game">
+                <div className="gallery-game-label">{g}戦目</div>
+                <div className="gallery-poems">
+                  {poems
+                    .filter((p) => p.game === g)
+                    .map((p, i) => (
+                      <div key={i} className={`gallery-poem${p.won ? ' won' : ''}`}>
+                        <div className="gallery-lines">
+                          <span>{p.upper}</span>
+                          <span>{p.middle}</span>
+                          <span>{p.lower}</span>
+                        </div>
+                        <div className="gallery-meta">
+                          <span className="gallery-author">{p.authorName}</span>
+                          {p.won && <span className="badge">選</span>}
+                          {p.average !== undefined && (
+                            <span className="badge">{p.average.toFixed(1)}点</span>
+                          )}
+                          <button
+                            className="ghost share-x"
+                            title="Xで共有する"
+                            onClick={() => shareOnX(p, p.authorName)}
+                          >
+                            Xで共有
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

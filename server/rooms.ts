@@ -15,6 +15,28 @@ export type RoomPlayer = {
   connected: boolean;
 };
 
+/**
+ * 部屋に残す句の記録。感想戦のためだけに持つ。
+ * Card ではなく文字だけにしてある。あとで眺めるのに札の素性は要らないし、
+ * ロビーに戻るたび全員に配るので軽いほうがいい。
+ */
+export type ArchivedHaiku = {
+  /** この部屋で何戦目か（1始まり） */
+  game: number;
+  mode: Mode;
+  authorName: string;
+  upper: string;
+  middle: string;
+  lower: string;
+  /** 独断と偏見・民主主義で選ばれた句 */
+  won?: boolean;
+  /** コンテストの平均点 */
+  average?: number;
+};
+
+/** 感想戦に残す上限。古いものから捨てる */
+export const ARCHIVE_MAX = 240;
+
 export type Room = {
   code: string;
   hostId: string | null;
@@ -24,6 +46,12 @@ export type Room = {
   decks: string[];
   /** 対戦ラウンド数。ホストがロビーで選ぶ */
   rounds: number;
+  /** 自由札を毎ターン使えるようにするか。既定はラウンドに1回 */
+  freeCardPerTurn: boolean;
+  /** この部屋でこれまでに詠まれた句。ロビーで感想戦をするために残す */
+  archive: ArchivedHaiku[];
+  /** この部屋で何戦したか */
+  games: number;
   game: GameState | null;
   /** 制限時間切れを発火させるハンドル。サーバー側で持つ */
   timer: ReturnType<typeof setTimeout> | null;
@@ -58,6 +86,9 @@ export function createRoom(): Room {
     mode: 'dokudan',
     decks: ['standard', 'meme'],
     rounds: DEFAULT_ROUNDS,
+    freeCardPerTurn: false,
+    archive: [],
+    games: 0,
     game: null,
     timer: null,
     timerKey: null,

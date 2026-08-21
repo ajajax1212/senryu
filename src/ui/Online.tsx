@@ -6,7 +6,7 @@ import { ROUND_CHOICES } from '../net/events';
 import { Game } from './Game';
 import { MODES } from './Setup';
 import type { Draft } from './Turn';
-import { DeadlineBar, SoundToggle } from './parts';
+import { DeadlineBar, PoemGallery, SoundToggle } from './parts';
 
 export function Online({ onBack }: { onBack: () => void }) {
   const room = useRoom();
@@ -124,6 +124,8 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
   // R18を入れるときは1台版と同じく一度確認を挟む（SPEC 3.3）。
   // ホストの操作が全員の山札を変えるので、むしろオンラインのほうが要る
   const [confirmingR18, setConfirmingR18] = useState(false);
+  // 感想戦。ロビーは1画面に収める約束なので、常設の枠ではなく重ねて出す
+  const [gallery, setGallery] = useState(false);
   // ラウンド数はサーバーが持つ値をそのまま描く。ここでローカルに控えると
   // ホスト以外の画面が更新されず、選んだ数と表示がずれる
   const rounds = lobby.rounds;
@@ -174,9 +176,18 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
 
   return (
     <>
+      {gallery && <PoemGallery poems={lobby.archive} onClose={() => setGallery(false)} />}
+
       <div className="lobby-head">
         <div className="label-mark centered">部屋コード</div>
-        <SoundToggle />
+        <div className="row">
+          {lobby.archive.length > 0 && (
+            <button className="ghost" onClick={() => setGallery(true)}>
+              この部屋の句（{lobby.archive.length}）
+            </button>
+          )}
+          <SoundToggle />
+        </div>
       </div>
       <h1 className="lobby-code">{lobby.code}</h1>
 
@@ -226,7 +237,8 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
         </div>
 
         <div className="panel col lb-rounds">
-          <h3>対戦ラウンド数</h3>
+          <h3>対戦ルール</h3>
+          <div className="rule-label">ラウンド数</div>
           <div className="round-selector-row">
             {ROUND_CHOICES.map((r) => (
               <button
@@ -237,6 +249,22 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
               >
                 <span className="num">{r}</span>
                 <span className="unit">ラウンド</span>
+              </button>
+            ))}
+          </div>
+          <div className="rule-label">自由札</div>
+          <div className="free-rule-row">
+            {[
+              { on: false, label: 'ラウンドに1回' },
+              { on: true, label: '毎ターン' },
+            ].map((o) => (
+              <button
+                key={String(o.on)}
+                className={`round-btn wide-btn${lobby.freeCardPerTurn === o.on ? ' active' : ''}`}
+                disabled={!amHost}
+                onClick={() => amHost && room.configure({ freeCardPerTurn: o.on })}
+              >
+                <span className="unit">{o.label}</span>
               </button>
             ))}
           </div>

@@ -11,8 +11,24 @@ export type Lobby = {
   decks: DeckId[];
   /** ホストが選んだ対戦ラウンド数。サーバーが配るので全員が同じ値を見る */
   rounds: number;
+  /** 自由札を毎ターン使えるか。既定はラウンドに1回 */
+  freeCardPerTurn: boolean;
+  /** この部屋でこれまでに詠まれた句。ロビーにいる間だけ届く */
+  archive: ArchivedHaiku[];
   players: { id: string; name: string; connected: boolean }[];
   started: boolean;
+};
+
+/** 感想戦に出す句。サーバーの ArchivedHaiku と同じ形 */
+export type ArchivedHaiku = {
+  game: number;
+  mode: Mode;
+  authorName: string;
+  upper: string;
+  middle: string;
+  lower: string;
+  won?: boolean;
+  average?: number;
 };
 
 export type ServerState = {
@@ -136,7 +152,7 @@ export function useRoom() {
   );
 
   const configure = useCallback(
-    async (patch: { mode?: Mode; decks?: DeckId[]; rounds?: number }) => {
+    async (patch: { mode?: Mode; decks?: DeckId[]; rounds?: number; freeCardPerTurn?: boolean }) => {
       const res = await emit(EV.configure, { code, ...patch });
       if (!res.ok) setError(res.error ?? '設定を変更できませんでした');
     },

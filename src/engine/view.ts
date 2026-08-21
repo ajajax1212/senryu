@@ -42,11 +42,11 @@ export function viewFor(s: GameState, me: string): PlayerView {
     deck7: [],
     seed: 0,
     // 自由札に書いた言葉も手札と同じ扱い。提出するまで他人に見えてはいけない。
-    // 使ったかどうか（usedRound）だけは残す。誰がもう切ったかは公開情報でよい
+    // 使ったかどうか（usedTurn）だけは残す。誰がもう切ったかは公開情報でよい
     players: s.players.map((p) =>
       p.id === me
         ? p
-        : { ...p, hand: [], free: { text: '', mora: null, usedRound: p.free.usedRound } },
+        : { ...p, hand: [], free: { text: '', mora: null, usedTurn: p.free.usedTurn } },
     ),
     // 自分がまだ詠んでいないうちに他人の句が見えると先に読まれてしまう。
     // ただし自分が出した句だけは、提出後の待機画面で見せる必要がある

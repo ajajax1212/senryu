@@ -718,7 +718,7 @@ describe('自由札', () => {
 
   it('最初は未記入で、手札には並ばない', () => {
     const s = startOnline('dokudan');
-    expect(s.players[0].free).toEqual({ text: '', mora: null, usedRound: null });
+    expect(s.players[0].free).toEqual({ text: '', mora: null, usedTurn: null });
     // 山札から配られた6枚だけ。自由札は書くまで札にならない
     expect(handOf(s, 'p1')).toHaveLength(6);
     expect(freeCardOf(s, 'p1')).toBeNull();
@@ -780,7 +780,7 @@ describe('自由札', () => {
     s = reducer(s, { type: 'SET_FREE_CARD', playerId: 'p1', text: '奥の手', mora: 5 });
     s = submitWithFree(s, 'p1');
 
-    expect(s.players[1].free.usedRound).toBe(1);
+    expect(s.players[1].free.usedTurn).toBe(0);
     expect(freeCardOf(s, 'p1')).toBeNull();
     // 言葉は残る。次のラウンドでそのまま使ってもいいし書き直してもいい
     expect(s.players[1].free.text).toBe('奥の手');
@@ -828,7 +828,7 @@ describe('自由札', () => {
     s = reducer(s, { type: 'TIMEOUT' });
     const mine = s.submissions.find((h) => h.authorId === 'p1')!;
     expect([mine.upper, mine.middle, mine.lower].some((c) => c.free)).toBe(false);
-    expect(s.players[1].free.usedRound).toBeNull();
+    expect(s.players[1].free.usedTurn).toBeNull();
   });
 });
 

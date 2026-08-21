@@ -1,10 +1,11 @@
-import { useReducer, useState } from 'react';
+import { useReducer, useRef, useState } from 'react';
 import { reducer, seatedPlayerId, shuffledSubmissions } from '../engine/reducer';
 import type { Action, DeckId, GameSettings, GameState, Mode, Phase } from '../engine/types';
 import { Setup } from './Setup';
 import { Game } from './Game';
 import type { Draft } from './Turn';
-import { Countdown } from './parts';
+import type { ArchivedHaiku } from '../net/useRoom';
+import { Countdown, PoemGallery } from './parts';
 
 type AppAction = Action | { type: 'RESET' };
 
@@ -35,6 +36,10 @@ export function Local({ mode: initialMode, onBack }: { mode: Mode; onBack: () =>
   // 毎回入力し直させると「もう一度遊ぶ」が気軽でなくなる
   const [names, setNames] = useState<string[]>(['', '', '']);
   const [decks, setDecks] = useState<DeckId[]>(['standard', 'meme']);
+  // 1台版にも感想戦を持たせる。RESET で state を捨てるので、句だけ外に取っておく
+  const [archive, setArchive] = useState<ArchivedHaiku[]>([]);
+  const [gallery, setGallery] = useState(false);
+  const games = useRef(0);
 
   function start(picked: string[], settings: GameSettings) {
     setNames(picked);
@@ -44,6 +49,16 @@ export function Local({ mode: initialMode, onBack }: { mode: Mode; onBack: () =>
 
   if (!game) {
     return (
+      <>
+        {gallery && <PoemGallery poems={archive} onClose={() => setGallery(false)} />}
+        {archive.length > 0 && (
+          <div className="row lobby-head">
+            <div className="grow" />
+            <button className="ghost" onClick={() => setGallery(true)}>
+              これまでの句（{archive.length}）
+            </button>
+          </div>
+        )}
       <Setup
         mode={mode}
         onModeChange={setMode}
@@ -53,6 +68,7 @@ export function Local({ mode: initialMode, onBack }: { mode: Mode; onBack: () =>
         onStart={start}
         onBack={onBack}
       />
+      </>
     );
   }
 
@@ -81,7 +97,25 @@ export function Local({ mode: initialMode, onBack }: { mode: Mode; onBack: () =>
         setDraft={(d) => setDraft({ ...d, key: turnKey })}
         dispatch={dispatch}
         canAdvance
-        onReplay={() => dispatch({ type: 'RESET' })}
+        onReplay={() => {
+          // 設定画面に戻る前に句を控える。state はこのあと捨てられる
+          games.current += 1;
+          const nameOf = (id: string) => game.players.find((p) => p.id === id)?.name ?? '?';
+          const added = game.history.flatMap((r) =>
+            r.submissions.map((h) => ({
+              game: games.current,
+              mode: r.mode,
+              authorName: nameOf(h.authorId),
+              upper: h.upper.text,
+              middle: h.middle.text,
+              lower: h.lower.text,
+              ...(r.winnerId === h.authorId ? { won: true } : {}),
+              ...(r.average !== undefined ? { average: r.average } : {}),
+            })),
+          );
+          setArchive((prev) => [...prev, ...added].slice(-240));
+          dispatch({ type: 'RESET' });
+        }}
         onExit={onBack}
       />
     </>

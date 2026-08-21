@@ -31,6 +31,7 @@ export function Setup({
   const [names, setNames] = useState(initialNames);
   const [decks, setDecks] = useState<DeckId[]>(initialDecks);
   const [rounds, setRounds] = useState<number>(DEFAULT_ROUNDS);
+  const [freeCardPerTurn, setFreeCardPerTurn] = useState(false);
   const [confirmingR18, setConfirmingR18] = useState(false);
 
   const filled = names.map((n) => n.trim()).filter(Boolean);
@@ -110,7 +111,8 @@ export function Setup({
 
         {/* 専用の対戦ラウンド数選択パネル */}
         <div className="panel col lb-rounds">
-          <h3>対戦ラウンド数</h3>
+          <h3>対戦ルール</h3>
+        <div className="rule-label">ラウンド数</div>
           <p className="sub">指定したラウンド数（1〜5回）戦って総合勝利を競います</p>
           <div className="round-selector-row">
             {ROUND_CHOICES.map((r) => (
@@ -124,6 +126,21 @@ export function Setup({
               </button>
             ))}
           </div>
+        <div className="rule-label">自由札</div>
+        <div className="free-rule-row">
+          {[
+            { on: false, label: 'ラウンドに1回' },
+            { on: true, label: '毎ターン' },
+          ].map((o) => (
+            <button
+              key={String(o.on)}
+              className={`round-btn wide-btn${freeCardPerTurn === o.on ? ' active' : ''}`}
+              onClick={() => setFreeCardPerTurn(o.on)}
+            >
+              <span className="unit">{o.label}</span>
+            </button>
+          ))}
+        </div>
         </div>
 
         <div className="panel col lb-players">
@@ -191,6 +208,7 @@ export function Setup({
           onStart(filled, {
             decks,
             rounds,
+            freeCardPerTurn,
             exchangeLimit: 2,
             anonymousSubmission: true,
             revealRaters: true,

@@ -2127,3 +2127,117 @@ input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; transform: 
     font-size: 13px;
   }
 }
+
+/* ── 対戦ルールの小見出し ── */
+.rule-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--text-washi-muted);
+  margin-top: 2px;
+}
+.free-rule-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+/* 自由札のトグルは数字ではなく言葉なので、札型より横長にする */
+.round-btn.wide-btn {
+  padding: 9px 6px;
+}
+.round-btn.wide-btn .unit {
+  margin-top: 0;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+/* ── 感想戦 ──
+   ロビーは1画面に収める約束なので、常設せず重ねて出す。
+   ここは眺める画面なので中身は縦に伸びてよい */
+.gallery-sheet {
+  width: 100%;
+  max-width: 860px;
+  max-height: 84vh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  background: linear-gradient(145deg, #1e2328, #14171a);
+  border: 2px solid var(--gold);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 24px var(--gold-glow);
+  cursor: default;
+}
+.gallery-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.gallery-head .label-mark { flex: 1; }
+.gallery-scroll {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-right: 4px;
+}
+.gallery-game-label {
+  font-family: var(--font-poem);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: var(--gold-light);
+  border-bottom: 1px solid var(--border-gold);
+  padding-bottom: 4px;
+  margin-bottom: 8px;
+}
+.gallery-poems {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+}
+.gallery-poem {
+  background: var(--card-bg);
+  color: var(--text-sumi);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-left: 4px solid var(--border-washi);
+  border-radius: 3px;
+  padding: 10px 12px;
+}
+/* 選ばれた句だけ縁を金にする。並べたときに拾いやすい */
+.gallery-poem.won { border-left-color: var(--gold); }
+.gallery-lines {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-poem);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.gallery-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.gallery-author {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: #55524b;
+  flex: 1;
+}
+.gallery-meta .badge {
+  color: #55524b;
+  border-color: rgba(0, 0, 0, 0.25);
+}
+.share-x {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-color: rgba(0, 0, 0, 0.25);
+  color: #33312c;
+}
+.share-x:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: #33312c;
+  color: #14130f;
+}
