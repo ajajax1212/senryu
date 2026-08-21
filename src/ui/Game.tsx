@@ -118,20 +118,27 @@ function Handoff({ s, dispatch }: { s: GameState; dispatch: (a: Action) => void 
 
   return (
     <div className="handoff">
-      <p className="sub">
+      <div className="handoff-meta">
         第{roundNumber(s)}ラウンド ／ 全{totalRounds(s)}ラウンド（{seatNumber(s)}人目 ／ {s.players.length}人）
-      </p>
-      <div>
-        <div className="name">{me.name}</div>
-        <p className="sub" style={{ marginTop: 8 }}>
-          さんに端末を渡してください
-        </p>
       </div>
-      <p className="sub">{role}</p>
+
+      {/* 手札を隠す暗幕そのものを画になる形にした。以前は文字だけだったので、
+          「まだ渡していい画面なのか」がひと目で判断できなかった。
+          伏せた札を1枚立てておけば、覗いてはいけない場面だと形で分かる */}
+      <div className="handoff-card">
+        <div className="handoff-seal">封</div>
+        <div className="handoff-name">{me.name}</div>
+        <div className="handoff-role">{role}</div>
+      </div>
+
+      {/* 名前は札の中に縦書きで入ったので、下の一文は名前から続けて読ませない。
+          「ぼたん」「さんに端末を…」と分かれると文として切れて読みにくい */}
+      <p className="sub center">{me.name} さんに端末を渡してください</p>
+
       <button className="primary wide" onClick={() => dispatch({ type: 'TAKE_SEAT' })}>
         {me.name}です
       </button>
-      <p className="sub">他の人は画面を見ないこと</p>
+      <p className="sub center handoff-warn">他の人は画面を見ないこと</p>
     </div>
   );
 }

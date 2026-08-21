@@ -1,6 +1,15 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import type { Card, Haiku } from '../engine/types';
+import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
+import type { Card, GameState, Haiku } from '../engine/types';
 import { FREE_CARD_MAX } from '../engine/types';
+import { activePlayer, roundNumber, seatNumber, totalRounds } from '../engine/reducer';
+import { setSfxEnabled, sfxEnabled, subscribeSfx } from './sound';
 
 export function CardView({
   card,
@@ -227,6 +236,114 @@ export function FreeCardEditor({
           やめる
         </button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * 効果音の入切。
+ *
+ * 既定はオフなので、押したことのない人には何も起きない。
+ * ゲーム中どのフェーズからでも切れるように、見出し帯（PhaseBar）に常駐させる。
+ * 「うるさいから止めたい」と思った瞬間に設定画面まで戻らせない。
+ */
+export function SoundToggle() {
+  const on = useSyncExternalStore(subscribeSfx, sfxEnabled, () => false);
+  return (
+    <button
+      type="button"
+      className={`sfx-toggle${on ? ' on' : ''}`}
+      title={on ? '効果音を切る' : '効果音を入れる'}
+      onClick={() => setSfxEnabled(!on)}
+    >
+      <span className="sfx-note">♪</span>
+      {/* 切ってあることは音符に斜線を重ねて示す。音符だけだと入っているのか分からない */}
+      {!on && <span className="sfx-slash" />}
+    </button>
+  );
+}
+
+/**
+ * ゲーム中の見出し帯。
+ *
+ * 以前は作句画面だけがこの帯を持ち、審査・採点・結果は素の見出しだったので、
+ * 画面が変わるたびに「いま何ラウンドの何人目か」を探し直すことになっていた。
+ * 位置と形を固定しておけば、目が同じ場所を見るだけで済む。
+ */
+export function PhaseBar({
+  s,
+  title,
+  right,
+}: {
+  s: GameState;
+  title: string;
+  /** その画面固有の指標（残り札・交換残りなど） */
+  right?: ReactNode;
+}) {
+  return (
+    <div className="hdr-bar">
+      <div className="hdr-group">
+        <span className="hdr-badge">
+          ラウンド {roundNumber(s)}／{totalRounds(s)}
+        </span>
+        <span className="hdr-badge">
+          {seatNumber(s)}人目／{s.players.length}人
+        </span>
+      </div>
+      <div className="hdr-title">{title}</div>
+      <div className="hdr-group">
+        {right}
+        <SoundToggle />
+      </div>
+    </div>
+  );
+}
+
+type SeatState = 'done' | 'pending' | 'lead';
+
+/**
+ * 待っている間の座席表。
+ *
+ * 「まだ詠んでいる人: あかり、ぼたん」という羅列だと、名前を読んで人数を数えて
+ * 自分の記憶にある顔ぶれと引き算する、という手間が要る。席を並べて印を変えれば
+ * 見るだけで済むし、何も動かない画面に人の気配が出る。
+ *
+ * 出せるのは公開情報だけ（誰が終わったか）。何を出したかは含めない。
+ */
+export function Roster({
+  s,
+  leadLabel,
+  doneLabel,
+  pendingLabel,
+}: {
+  s: GameState;
+  /** 親／詠み手など、その手番の中心にいる人の肩書き */
+  leadLabel: string;
+  doneLabel: string;
+  pendingLabel: string;
+}) {
+  const lead = activePlayer(s);
+  const seats = s.players.map((p) => {
+    const state: SeatState =
+      p.id === lead.id ? 'lead' : s.turnQueue.includes(p.id) ? 'pending' : 'done';
+    return { id: p.id, name: p.name, state };
+  });
+
+  const label: Record<SeatState, string> = {
+    lead: leadLabel,
+    done: doneLabel,
+    pending: pendingLabel,
+  };
+
+  return (
+    <div className="roster">
+      {seats.map((x) => (
+        <div key={x.id} className={`seat ${x.state}`}>
+          <span className="seat-dot" />
+          <span className="seat-name">{x.name}</span>
+          <span className="seat-state">{label[x.state]}</span>
+        </div>
+      ))}
     </div>
   );
 }

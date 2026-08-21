@@ -8,11 +8,10 @@ import {
   playerById,
   remainingExchanges,
   roundNumber,
-  seatNumber,
-  totalRounds,
 } from '../engine/reducer';
 import { remainingCards } from '../engine/view';
-import { CardView, FreeCardEditor, HaikuView } from './parts';
+import { CardView, FreeCardEditor, HaikuView, PhaseBar, Roster } from './parts';
+import { play } from './sound';
 
 /** 選択中の札。時間切れの自動提出に渡すので画面より上で保持する */
 export type Draft = { upperId?: string; middleId?: string; lowerId?: string };
@@ -69,14 +68,29 @@ export function Turn({
   const hand = handOf(s, me);
   const freeCard = freeCardOf(s, me);
   const freeUsed = player.free.usedRound === roundNumber(s);
-  const five = hand.filter((c) => c.mora === 5);
-  const seven = hand.filter((c) => c.mora === 7);
+  // 五音の束・七音の束・自由札、の三つに分けて並べる。
+  // 以前は handOf の並び（自由札が宣言した音数の群に混ざる）をそのまま出していたので、
+  // 「五音として使う」と書き直すたびに自由札の位置が動き、目で追う先が毎回変わっていた。
+  // 自由札は末尾に固定する。山札の札とは性質が違う（交換に出せない・1ラウンド1回）ので、
+  // 束を分けたほうが「使い切ったかどうか」も見に行きやすい
+  const five = player.hand.filter((c) => c.mora === 5);
+  const seven = player.hand.filter((c) => c.mora === 7);
 
   const card = (id?: string) => hand.find((c) => c.id === id) ?? null;
-  const upper = card(draft.upperId);
-  const middle = card(draft.middleId);
-  const lower = card(draft.lowerId);
-  const isPlaced = (c: Card) => [draft.upperId, draft.middleId, draft.lowerId].includes(c.id);
+  /**
+   * 位置に合う札だけを取る。自由札は上の句に置いたまま七音へ書き直せてしまい、
+   * そのままだと七音の札が五音の位置に居座る。エンジンは弾くので提出はされないが、
+   * ボタンだけ押せて何も起きない状態になるので、置いた側で外す。
+   */
+  const inSlot = (id: string | undefined, mora: 5 | 7) => {
+    const c = card(id);
+    return c && c.mora === mora ? c : null;
+  };
+  const upper = inSlot(draft.upperId, 5);
+  const middle = inSlot(draft.middleId, 7);
+  const lower = inSlot(draft.lowerId, 5);
+  const placedIds = [upper?.id, middle?.id, lower?.id];
+  const isPlaced = (c: Card) => placedIds.includes(c.id);
 
   const tossed = player.hand.filter((c) => tossing.includes(c.id));
   const claimed = s.discard.filter((d) => claiming.includes(d.card.id)).map((d) => d.card);
@@ -85,6 +99,7 @@ export function Turn({
 
   /** 5音札は上句→下句の順に、7音札は中句に入れる */
   function place(c: Card) {
+    play('place');
     if (draft.upperId === c.id) return setDraft({ ...draft, upperId: undefined });
     if (draft.middleId === c.id) return setDraft({ ...draft, middleId: undefined });
     if (draft.lowerId === c.id) return setDraft({ ...draft, lowerId: undefined });
@@ -95,6 +110,7 @@ export function Turn({
   }
 
   function toggleToss(c: Card) {
+    play('place');
     if (tossing.includes(c.id)) {
       setTossing(tossing.filter((id) => id !== c.id));
       const over = claimed.filter((x) => x.mora === c.mora);
@@ -112,6 +128,7 @@ export function Turn({
    */
   function commitExchange() {
     if (leaving.length > 0) return; // 演出中の二度押しを防ぐ
+    play('toss');
     const discardIds = tossing;
     const capturedIds = claiming;
 
@@ -127,6 +144,7 @@ export function Turn({
     setTimeout(() => {
       dispatch({ type: 'EXCHANGE', playerId: me, discardIds, capturedIds });
       setLeaving([]);
+      play('draw');
     }, 300);
   }
 
@@ -167,21 +185,16 @@ export function Turn({
         />
       )}
 
-      <div className="hdr-bar">
-        <div className="hdr-group">
-          <span className="hdr-badge">
-            ラウンド {roundNumber(s)}／{totalRounds(s)}
-          </span>
-          <span className="hdr-badge">
-            {seatNumber(s)}人目／{s.players.length}人
-          </span>
-          <span className="hdr-badge">残り札: {remainingCards(s)}</span>
-        </div>
-        <div className="hdr-title">川柳・{player.name}の句</div>
-        <div className="hdr-group">
-          <span className={`hdr-badge${left > 0 ? ' on' : ''}`}>交換残り: {left}</span>
-        </div>
-      </div>
+      <PhaseBar
+        s={s}
+        title={`川柳・${player.name}の句`}
+        right={
+          <>
+            <span className="hdr-badge">残り札 {remainingCards(s)}</span>
+            <span className={`hdr-badge${left > 0 ? ' on' : ''}`}>交換残り {left}</span>
+          </>
+        }
+      />
 
       <div className="tabs">
         <button className={tab === 'compose' ? 'on' : ''} onClick={() => setTab('compose')}>
@@ -257,15 +270,16 @@ export function Turn({
             <button
               className="btn-kansei"
               disabled={!upper || !middle || !lower}
-              onClick={() =>
+              onClick={() => {
+                play('submit');
                 dispatch({
                   type: 'SUBMIT',
                   playerId: me,
                   upperId: upper!.id,
                   middleId: middle!.id,
                   lowerId: lower!.id,
-                })
-              }
+                });
+              }}
             >
               完成
             </button>
@@ -279,21 +293,34 @@ export function Turn({
             手札
             <span className="free-note">自由札はラウンドに1枚・交換不可</span>
           </div>
+          {/* 五音・七音・自由札を束で分ける。文字の見出しを足すと1行ぶん高くなって
+              作句画面が1画面に収まらなくなるので、区切りは間隔だけで示す */}
           <div className="hand">
-            {[...five, ...seven].map((c) => (
-              <CardView key={c.id} card={c} {...handProps(c)} />
-            ))}
-            {/* 自由札。まだ書いていないときは白紙の札を出し、押すと記入画面が開く。
-                今ラウンド使い切ったあとは使用済みの札として置いておく */}
-            {!freeCard && (
-              <div
-                className={`card free blank${freeUsed ? ' spent' : ''}`}
-                onClick={() => !freeUsed && setEditingFree(true)}
-              >
-                <div className="text">{freeUsed ? '使用済' : '自由札'}</div>
-                <div className="reading">{freeUsed ? 'このラウンドは終わり' : '押して書く'}</div>
-              </div>
-            )}
+            <div className="hand-group">
+              {five.map((c) => (
+                <CardView key={c.id} card={c} {...handProps(c)} />
+              ))}
+            </div>
+            <div className="hand-group">
+              {seven.map((c) => (
+                <CardView key={c.id} card={c} {...handProps(c)} />
+              ))}
+            </div>
+            <div className="hand-group">
+              {/* 自由札。まだ書いていないときは白紙の札を出し、押すと記入画面が開く。
+                  今ラウンド使い切ったあとは使用済みの札として置いておく */}
+              {freeCard ? (
+                <CardView card={freeCard} {...handProps(freeCard)} />
+              ) : (
+                <div
+                  className={`card free blank${freeUsed ? ' spent' : ''}`}
+                  onClick={() => !freeUsed && setEditingFree(true)}
+                >
+                  <div className="text">{freeUsed ? '使用済' : '自由札'}</div>
+                  <div className="reading">{freeUsed ? 'このラウンドは終わり' : '押して書く'}</div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -310,23 +337,60 @@ function Waiting({ s, me }: { s: GameState; me: string }) {
       : s.mode === 'contest' && me !== author.id
         ? { title: 'あなたは審査員です', note: `${author.name} が詠み終わったら0〜100点を付けます。` }
         : { title: '提出しました', note: null };
-  const waiting = s.turnQueue.map((id) => playerById(s, id)?.name ?? '?');
+  const p = phaseProgress(s);
+  const allIn = s.turnQueue.length === 0;
 
   return (
     <>
-      <h2>{role.title}</h2>
-      {role.note && <p className="sub center">{role.note}</p>}
-      {mine && (
-        <div className="board">
-          <HaikuView haiku={mine} />
+      <PhaseBar s={s} title={role.title} />
+
+      <div className="wait-stage">
+        {/* 自分の句があれば真ん中に据える。無い人（親・審査員）には、
+            出そろい具合を伏せ札の列で見せる。文字だけの待機画面は
+            進んでいるのか止まっているのか分からない */}
+        <div className="wait-main">
+          {mine ? (
+            <HaikuView haiku={mine} author="あなたの句" />
+          ) : (
+            <FaceDownStack done={p?.done ?? 0} total={p?.total ?? 0} />
+          )}
         </div>
-      )}
-      <div className="panel col center">
-        <h3>{waiting.length > 0 ? 'まだ詠んでいる人' : '全員そろいました'}</h3>
-        <ProgressBar s={s} />
-        {waiting.length > 0 && <p>{waiting.join('、')}</p>}
+
+        <div className="panel col wait-side">
+          <div className="label-mark">{allIn ? '全員そろいました' : '出そろうのを待っています'}</div>
+          <ProgressBar s={s} />
+          {/* コンテストは詠むのが1人だけなので、残りは「提出済」ではなく「審査員」。
+              同じ待機画面でもモードで意味が違う */}
+          <Roster
+            s={s}
+            leadLabel={s.mode === 'dokudan' ? '親' : '詠み手'}
+            doneLabel={s.mode === 'dokudan' ? '提出済' : '審査員'}
+            pendingLabel={s.mode === 'dokudan' ? '詠んでいる' : '待機'}
+          />
+          {role.note && <p className="sub">{role.note}</p>}
+        </div>
       </div>
     </>
+  );
+}
+
+/**
+ * 出そろい具合を伏せた短冊で見せる。
+ *
+ * 提出された句そのものは当然まだ配られていないので、枚数だけを形にする。
+ * 数字のバーより「あと何枚で場が埋まるか」が体感で分かるのと、
+ * 何も動かない画面に置くものがこれ以外に無い。
+ */
+function FaceDownStack({ done, total }: { done: number; total: number }) {
+  if (total <= 0) return null;
+  return (
+    <div className="facedown-stack">
+      {Array.from({ length: total }, (_, i) => (
+        <div key={i} className={`facedown${i < done ? ' in' : ''}`}>
+          <span>{i < done ? '句' : ''}</span>
+        </div>
+      ))}
+    </div>
   );
 }
 

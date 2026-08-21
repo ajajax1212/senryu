@@ -6,7 +6,7 @@ import { ROUND_CHOICES } from '../net/events';
 import { Game } from './Game';
 import { MODES } from './Setup';
 import type { Draft } from './Turn';
-import { DeadlineBar } from './parts';
+import { DeadlineBar, SoundToggle } from './parts';
 
 export function Online({ onBack }: { onBack: () => void }) {
   const room = useRoom();
@@ -174,7 +174,10 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
 
   return (
     <>
-      <div className="label-mark centered">部屋コード</div>
+      <div className="lobby-head">
+        <div className="label-mark centered">部屋コード</div>
+        <SoundToggle />
+      </div>
       <h1 className="lobby-code">{lobby.code}</h1>
 
       <div className="lobby-grid lb-online">

@@ -1670,3 +1670,460 @@ input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; transform: 
   font-weight: 700;
   color: var(--gold-light);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   ここから下は「画面ごとの一貫性・待機画面・手札の並び・効果音」の追補
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 効果音トグル ──
+   既定はオフなので、切ってあることを斜線で示す。音符だけだと状態が読めない */
+.sfx-toggle {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--text-washi-muted);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-washi);
+  box-shadow: none;
+}
+.sfx-toggle:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+  color: var(--text-washi);
+  border-color: var(--gold);
+}
+.sfx-toggle.on {
+  color: #121518;
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+  border-color: var(--gold-light);
+}
+.sfx-note { pointer-events: none; }
+.sfx-slash {
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  top: 50%;
+  height: 1.5px;
+  background: currentColor;
+  transform: rotate(-32deg);
+  border-radius: 1px;
+  pointer-events: none;
+}
+.title-sfx {
+  align-self: flex-end;
+  margin: 0 4px -8px 0;
+}
+.lobby-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.lobby-head .label-mark { flex: 0 0 auto; }
+.lobby-head .sfx-toggle { position: absolute; right: 0; }
+.gameover-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+.gameover-head h1 { flex: 0 0 auto; }
+.gameover-head .sfx-toggle { position: absolute; right: 0; }
+
+/* 見出し帯は全フェーズ共通になったので、狭い画面でも崩れないようにする。
+   題は1行に押し込めて、指標の並びを折り返させない */
+.hdr-bar { flex-wrap: wrap; }
+.hdr-title {
+  flex: 1 1 auto;
+  text-align: center;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 待機画面 ──
+   句（または伏せ札）を主役に、進み具合を脇に。以前は縦に積んだ文字列だけで、
+   何を見ればいいのかの優劣が付いていなかった */
+.wait-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  width: 100%;
+}
+.wait-main {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.wait-side {
+  width: 100%;
+  max-width: 440px;
+  align-items: stretch;
+  gap: 10px;
+}
+.wait-side .progress { max-width: none; }
+
+/* ── 座席表 ── */
+.roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.seat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border-washi);
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.28);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-washi-muted);
+  white-space: nowrap;
+}
+.seat-name {
+  font-family: var(--font-poem);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-washi);
+}
+.seat-state { font-size: 10px; letter-spacing: 0.06em; }
+.seat-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-washi-muted);
+  flex-shrink: 0;
+}
+.seat.done { border-color: var(--border-gold); background: rgba(198, 160, 82, 0.1); }
+.seat.done .seat-dot { background: var(--gold); box-shadow: 0 0 6px var(--gold-glow); }
+.seat.done .seat-state { color: var(--gold-light); }
+.seat.lead { border-color: var(--vermilion); background: rgba(197, 61, 45, 0.12); }
+.seat.lead .seat-dot { background: var(--vermilion); }
+.seat.lead .seat-state { color: #e8776a; }
+/* まだの人だけ息をさせる。全員が点滅すると誰を待っているのか分からない */
+.seat.pending .seat-dot { animation: seat-breathe 1.6s ease-in-out infinite; }
+@keyframes seat-breathe {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* ── 伏せ札の列（提出の出そろい具合） ── */
+.facedown-stack {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.facedown {
+  width: 62px;
+  height: 138px;
+  border-radius: 3px;
+  border: 1.5px dashed var(--border-gold);
+  background: rgba(0, 0, 0, 0.25);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-poem);
+  font-size: 20px;
+  color: transparent;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* 提出済みの1枚は裏を向けた札として立てる。表は当然まだ見せない */
+.facedown.in {
+  border: 1px solid #6d5a33;
+  background:
+    repeating-linear-gradient(135deg, rgba(198, 160, 82, 0.16) 0 6px, transparent 6px 12px),
+    linear-gradient(160deg, #2a2a33, #191a20);
+  color: var(--gold-light);
+  box-shadow: var(--lift-card);
+  animation: facedown-land 0.45s cubic-bezier(0.2, 1, 0.3, 1) both;
+}
+@keyframes facedown-land {
+  from { opacity: 0; transform: translateY(-22px) rotate(-8deg); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ── 手札の束分け ──
+   五音の束・七音の束・自由札。見出しの行を足すと1行ぶん高くなって
+   作句画面が1画面に収まらなくなるので、区切りは間隔だけで示す */
+.hand { gap: 28px; }
+.hand-group {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+/* 束が空（自由札を使い切った等）のときに間隔だけが残らないようにする */
+.hand-group:empty { display: none; }
+
+/* ── 引き継ぎ画面 ──
+   端末を渡すあいだの暗幕。文字だけだと「見てはいけない画面」に見えない */
+.handoff {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+}
+.handoff-meta {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--text-washi-muted);
+}
+.handoff-card {
+  position: relative;
+  width: 190px;
+  padding: 30px 14px 26px;
+  border-radius: 4px;
+  border: 1px solid #6d5a33;
+  background:
+    repeating-linear-gradient(135deg, rgba(198, 160, 82, 0.14) 0 7px, transparent 7px 14px),
+    linear-gradient(160deg, #2a2a33, #171820);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.6), inset 0 0 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  animation: handoff-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes handoff-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+.handoff-seal {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-6deg);
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--vermilion);
+  border-radius: 2px;
+  background: rgba(252, 251, 250, 0.95);
+  color: var(--vermilion);
+  font-family: var(--font-poem);
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: var(--lift-hanko);
+}
+.handoff-name {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font-family: var(--font-poem);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--text-washi);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
+  min-height: 140px;
+}
+.handoff-role {
+  font-family: var(--font-poem);
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  color: var(--gold-light);
+  border-top: 1px solid var(--border-gold);
+  padding-top: 8px;
+  width: 100%;
+}
+.handoff .primary { max-width: 320px; }
+.handoff-warn { color: #e8776a; letter-spacing: 0.08em; }
+
+/* ── 発表の自動送り ──
+   5秒で勝手に閉じるので、残りが見えないと途中で切られた感じになる */
+.reveal-clock {
+  width: 180px;
+  height: 3px;
+  margin-top: 14px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.reveal-clock > i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-dark), var(--gold-light));
+  transform-origin: left center;
+  animation: reveal-drain 5s linear both;
+}
+@keyframes reveal-drain {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+.reveal-hint {
+  margin-top: 8px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--text-washi-muted);
+}
+
+/* ── 途中経過 ──
+   結果画面の下に1行だけ。総合結果まで順位を伏せておく理由がない */
+.standings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--border-gold);
+  border-bottom: 1px solid var(--border-gold);
+  margin-bottom: 4px;
+}
+.standings-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--text-washi-muted);
+  margin-right: 2px;
+}
+.standing {
+  font-family: var(--font-poem);
+  font-size: 12px;
+  color: var(--text-washi-muted);
+  border: 1px solid var(--border-washi);
+  border-radius: 3px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+.standing b {
+  color: var(--text-washi);
+  margin-left: 5px;
+  font-variant-numeric: tabular-nums;
+}
+.standing.lead {
+  border-color: var(--gold);
+  background: rgba(198, 160, 82, 0.12);
+  color: var(--gold-light);
+}
+.standing.lead b { color: var(--gold-light); }
+
+@media (prefers-reduced-motion: reduce) {
+  .seat.pending .seat-dot,
+  .facedown.in,
+  .handoff-card,
+  .reveal-clock > i {
+    animation: none !important;
+  }
+}
+
+/* ── 広い画面では待機画面を横並びに ── */
+@media (min-width: 900px) {
+  .wait-stage {
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 32px;
+  }
+  .wait-main { flex: 0 0 auto; }
+  .wait-side { flex: 0 1 380px; }
+}
+
+/*
+ * ── 縦が足りない画面のつめ ──
+ *
+ * 1280x800 の作句画面は、自由札が1枚増えた時点で80pxほど溢れていた。
+ * 高さで分岐しておけば、縦に余裕のある 1440x900 では今までどおりの大きさを保ったまま、
+ * 800px の画面だけを詰められる。札を一律に小さくすると読みづらくなるので、
+ * 「余白・行間を先に削り、札は最後に少しだけ」の順で削っている。
+ */
+@media (min-width: 900px) and (max-height: 880px) {
+  #root { padding: 10px 32px 8px; gap: 10px; }
+
+  .hdr-bar { padding: 0 0 6px; }
+  .hdr-title { font-size: 19px; }
+  .tabs { margin-bottom: 4px; }
+  .tabs button { padding: 6px; }
+
+  .turn-grid { gap: 10px; }
+  .turn-stage { gap: 8px; }
+  .slots { padding: 0; gap: 18px; }
+  .slot-wrap { gap: 3px; }
+  .slot-mora { font-size: 20px; }
+
+  .card, .card-tanzaku { width: 70px; height: 152px; padding: 10px 5px 20px; }
+  .card.m7, .card-tanzaku.m7 { height: 194px; }
+  .card .text { --box: 124px; font-size: min(21px, calc(var(--box) / (var(--len, 5) * 1.05))); }
+  .card.m7 .text { --box: 166px; font-size: min(20px, calc(var(--box) / (var(--len, 7) * 1.05))); }
+  .slot { width: 70px; height: 152px; font-size: 21px; }
+  .slot.tall { height: 194px; }
+
+  .hand-tray { padding: 8px 12px 10px; margin-top: 0; }
+  .hand-tray .label-mark { margin-bottom: 2px; }
+  .hand { padding: 2px; }
+  button.btn-kansei { padding: 8px 36px; margin: 2px 0; }
+  .facedown { width: 58px; height: 126px; }
+
+  /* 8人ぶんの名前欄を並べると設定画面がわずかに溢れていた。
+     枠の内側だけを詰める。中身の字は小さくしない */
+  .panel { padding: 13px; }
+  .lobby-grid { gap: 14px; }
+
+  /* 8人ぶんの順位表は行の高さだけで400pxを超え、総合結果が70pxほど溢れる。
+     字を小さくすると勝敗が読みにくいので、行の上下の余白だけを削る */
+  .gameover-container { gap: 12px; }
+  th { padding: 7px 14px; }
+  td { padding: 8px 14px; }
+
+  /* 8人だと負け句が2段になり、結果画面が40pxほど溢れる。
+     選ばれた句の大きさは落とさず、選ばれなかった句だけ縮める。
+     ここは「どれが勝ったか」を見る画面で、負け句は読めれば足りる */
+  .board { gap: 14px; }
+  .haiku.lost { padding: 14px 14px 18px; }
+  .haiku.lost .haiku-body,
+  .haiku.lost .haiku-body > div { font-size: 16px; min-height: 158px; }
+}
+
+/*
+ * ── 狭い画面の見出し帯 ──
+ *
+ * 1台を回して遊ぶのはスマホなので、ここが太ると札の置き場が減る。
+ * 素直に折り返させると「左の指標／題／右の指標」で3行（120px）になっていた。
+ * 題を1行めに独立させ、指標は左右の区別を捨てて1行に並べ直すと2行（67px）に収まる。
+ * 音符だけは題の行の空きに絶対配置で逃がす。指標の列に混ぜると1個ぶん溢れて
+ * また3行に戻るため。
+ */
+@media (max-width: 700px) {
+  .hdr-bar {
+    position: relative;
+    gap: 6px;
+    justify-content: center;
+    padding-top: 2px;
+  }
+  /* 左右のまとまりを解いて、全部の指標を同じ行に流す */
+  .hdr-group { display: contents; }
+  .hdr-badge { font-size: 11px; padding: 3px 8px; }
+  .hdr-title {
+    flex: 1 1 100%;
+    order: -1;
+    font-size: 18px;
+    padding: 0 34px;
+  }
+  .hdr-bar .sfx-toggle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 26px;
+    height: 26px;
+    font-size: 13px;
+  }
+}

@@ -5,13 +5,12 @@ import {
   playerById,
   predictionHits,
   ranking,
-  roundNumber,
-  seatNumber,
   totalTurns,
 } from '../engine/reducer';
 import { gradeFor } from '../engine/types';
-import { HaikuView } from './parts';
+import { HaikuView, PhaseBar, Roster, SoundToggle } from './parts';
 import { ProgressBar } from './Turn';
+import { play } from './sound';
 
 export function Judge({
   s,
@@ -30,7 +29,7 @@ export function Judge({
     const guess = s.predictions[me];
     return (
       <>
-        <h2>{host.name} が選んでいます</h2>
+        <PhaseBar s={s} title={`${host.name} が選んでいます`} />
         <p className="sub center">
           どれが選ばれるか予想してみてください。点数には関係ありません。
         </p>
@@ -39,7 +38,10 @@ export function Judge({
             <div key={i} className={`guess-slot${guess === i ? ' picked' : ''}`}>
               <HaikuView
                 haiku={h}
-                onClick={() => dispatch({ type: 'PREDICT', playerId: me, index: i })}
+                onClick={() => {
+                  play('place');
+                  dispatch({ type: 'PREDICT', playerId: me, index: i });
+                }}
               />
               {guess === i && <div className="guess-mark">予想</div>}
             </div>
@@ -54,8 +56,8 @@ export function Judge({
 
   return (
     <>
-      <h2>{host.name} の独断と偏見</h2>
-      <p className="sub">
+      <PhaseBar s={s} title={`${host.name} の独断と偏見`} />
+      <p className="sub center">
         一番良かった句をタップして選んでください。理由は要りません。好みで決めてください。
       </p>
       <div className="board">
@@ -63,7 +65,10 @@ export function Judge({
           <HaikuView
             key={i}
             haiku={h}
-            onClick={() => dispatch({ type: 'JUDGE', playerId: me, index: i })}
+            onClick={() => {
+              play('stamp');
+              dispatch({ type: 'JUDGE', playerId: me, index: i });
+            }}
           />
         ))}
       </div>
@@ -88,15 +93,20 @@ export function Rate({
   if (!haiku) return null;
 
   if (done || me === author.id) {
-    const waiting = s.turnQueue.map((id) => playerById(s, id)?.name ?? '?');
     return (
       <>
-        <h2>{author.name} の句</h2>
-        <HaikuView haiku={haiku} />
-        <div className="panel col center">
-          <h3>{me === author.id ? '採点されています' : `${s.ratings[me]}点を入れました`}</h3>
-          <ProgressBar s={s} />
-          {waiting.length > 0 && <p className="sub">まだ入れていない人: {waiting.join('、')}</p>}
+        <PhaseBar s={s} title={`${author.name} の句`} />
+        <div className="wait-stage">
+          <div className="wait-main">
+            <HaikuView haiku={haiku} author={`${author.name} の句`} />
+          </div>
+          <div className="panel col wait-side">
+            <div className="label-mark">
+              {me === author.id ? '採点されています' : `${s.ratings[me]}点を入れました`}
+            </div>
+            <ProgressBar s={s} />
+            <Roster s={s} leadLabel="詠み手" doneLabel="採点済" pendingLabel="採点中" />
+          </div>
         </div>
       </>
     );
@@ -104,7 +114,7 @@ export function Rate({
 
   return (
     <>
-      <h2>{playerById(s, me)?.name} の採点</h2>
+      <PhaseBar s={s} title={`${playerById(s, me)?.name} の採点`} />
       <HaikuView haiku={haiku} author={`${author.name} の句`} />
 
       <div className="score-display">{score}点</div>
@@ -114,7 +124,13 @@ export function Rate({
       </div>
 
       <div className="grow" />
-      <button className="primary wide" onClick={() => dispatch({ type: 'RATE', playerId: me, score })}>
+      <button
+        className="primary wide"
+        onClick={() => {
+          play('submit');
+          dispatch({ type: 'RATE', playerId: me, score });
+        }}
+      >
         {score}点で確定する
       </button>
       <p className="sub center">他の人の点数は全員が入れ終わるまで見えません</p>
@@ -139,8 +155,15 @@ export function RoundResult({
 
   useEffect(() => {
     if (!revealing) return;
+    // 幕を上げる鈴 → 落款が落ちる音、の2つだけ。CSSの演出（styles.css の
+    // line-rise / stamp-bounce）と同じ刻みに合わせてある。ずれると音だけ浮く
+    play('chime');
+    const hit = setTimeout(() => play('stamp'), 1850);
     const t = setTimeout(() => setRevealing(false), 5000);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(hit);
+      clearTimeout(t);
+    };
   }, [revealing]);
 
   if (!r) return null;
@@ -159,15 +182,17 @@ export function RoundResult({
             <div className="reveal-name">
               {r.mode === 'contest' ? `${r.average!.toFixed(1)}点` : name(r.winnerId!)}
             </div>
+            {/* 勝手に閉じるまでの残りを見せる。何秒眺めていられるのか分からないと、
+                読み上げている途中で画面が変わったように感じる */}
+            <div className="reveal-clock">
+              <i />
+            </div>
             <div className="reveal-hint">タップで結果へ</div>
           </div>
         </div>
       )}
 
-      <h2>{activePlayer(s).name} の番 — 結果</h2>
-      <p className="sub center">
-        第{roundNumber(s)}ラウンド ／ {seatNumber(s)}人目 ／ {s.players.length}人
-      </p>
+      <PhaseBar s={s} title={`${activePlayer(s).name} の番 — 結果`} />
 
       {r.mode === 'dokudan' ? (
         <>
@@ -219,14 +244,43 @@ export function RoundResult({
       )}
 
       <div className="grow" />
+      {/* ここまでの成績。1手番ごとに総合順位を思い出せないと、残りの手番で
+          誰を追えばいいのか分からない。総合結果まで伏せておく理由がない */}
+      <Standings s={s} />
       {canAdvance ? (
-        <button className="primary wide" onClick={() => dispatch({ type: 'NEXT_TURN' })}>
+        <button
+          className="primary wide"
+          onClick={() => {
+            play('place');
+            dispatch({ type: 'NEXT_TURN' });
+          }}
+        >
           {last ? '総合結果へ' : '次のプレイヤーに進む'}
         </button>
       ) : (
         <p className="sub center">ホストが次に進めるのを待っています</p>
       )}
     </>
+  );
+}
+
+/** 途中経過の並び。1行に収める（結果画面の縦を食わないこと優先） */
+function Standings({ s }: { s: GameState }) {
+  const table = ranking(s);
+  const top = table[0]?.score ?? 0;
+  return (
+    <div className="standings">
+      <span className="standings-label">ここまで</span>
+      {table.map((p) => (
+        <span key={p.id} className={`standing${p.score === top && top > 0 ? ' lead' : ''}`}>
+          {p.name}
+          <b>
+            {s.mode === 'dokudan' ? p.score : p.score.toFixed(1)}
+            {s.mode === 'dokudan' ? '勝' : '点'}
+          </b>
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -251,9 +305,17 @@ export function GameOver({
   const featured = featuredHaiku(s, table[0]?.id);
   const poems = poemsByPlayer(s);
 
+  // 総合結果に着いた一度だけ鳴らす。タブ切り替えのたびに鳴ると祝いにならない
+  useEffect(() => {
+    play('fanfare');
+  }, []);
+
   return (
     <div className="gameover-container col">
-      <h1>総合結果</h1>
+      <div className="gameover-head">
+        <h1>総合結果</h1>
+        <SoundToggle />
+      </div>
 
       <div className="tabs">
         <button className={tab === 'result' ? 'on' : ''} onClick={() => setTab('result')}>

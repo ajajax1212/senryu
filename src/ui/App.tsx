@@ -3,6 +3,7 @@ import type { Mode } from '../engine/types';
 import { codeFromUrl } from '../net/useRoom';
 import { Local } from './Local';
 import { Online } from './Online';
+import { SoundToggle } from './parts';
 
 type Route = { kind: 'title' } | { kind: 'local'; mode: Mode } | { kind: 'online' };
 
@@ -23,6 +24,10 @@ function Title({ onPick }: { onPick: (r: Route) => void }) {
   return (
     <>
       <div className="title-block">
+        {/* 効果音は既定でオフ。始める前に入れておけるよう、題字の脇に置く */}
+        <div className="title-sfx">
+          <SoundToggle />
+        </div>
         {/* 題字は縦書きかるた短冊モチーフ。落款スタンプ付き */}
         <div className="title-mark">五七五</div>
         <p className="sub center">配られた札で川柳を作り、人間の主観だけで勝敗を決めるデジタルかるた</p>
