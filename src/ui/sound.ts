@@ -1,9 +1,18 @@
 /**
  * 効果音。
  *
- * 音源ファイルは持たず Web Audio で合成する。依存を増やさないためでもあるが、
- * 数十msの木の音のために数十KBのmp3を読みに行くと、部屋に入った直後の
- * 一番大事な数秒でネットワークを取り合うことになるのが実際の理由。
+ * 生音源（`public/sfx/*.mp3`）を鳴らし、読めなかったときだけ Web Audio の
+ * 合成音に落ちる。出どころは効果音ラボ（商用無料・クレジット不要）。
+ * FAQ で「アプリに同梱して GitHub で公開するのは再配布とみなさない」と
+ * 明記されているので、音源ファイルをリポジトリに置いてよい。
+ * ただし**直リンクは禁止**なので、必ず自分のところから配る（だから public/ に置く）。
+ *
+ * **ページを開いただけでは1バイトも読まない。** 音を入れる操作をした人が
+ * 初めてトグルを押したときにまとめて取りに行く。部屋に入った直後の
+ * 一番大事な数秒でネットワークを取り合わない、という元の方針は変えていない。
+ *
+ * **合成音は消さない。** 取得に失敗しても・オフラインでも鳴るようにするため、
+ * 下の tone / noise / taiko と `synth()` は fallback として残してある。
  *
  * **既定はオフ。** 音の好みは割れるうえ、通話しながら遊ぶことが多いので、
  * 黙って鳴り出すほうが害が大きい。明示的に入れた人にだけ鳴らす。
@@ -27,8 +36,61 @@ export type SfxName =
   /** 総合結果。短い上昇音 */
   | 'fanfare';
 
+/**
+ * 音源ごとの鳴らし方。
+ *
+ * `gain` は「狙いのピーク ÷ その音源の実測ピーク」で出した値。生音源は素の
+ * ピークがまちまち（0.35〜0.65）なので、同じ数字を掛けると音ごとに大きさが
+ * 揃わない。ブラウザで decode して測った実測値から逆算してある。
+ *
+ * `at` はその音源の頭にある無音を飛ばす秒数。押した瞬間に鳴ってほしい音で
+ * 数十ms待たされると、反応が鈍いように感じる。
+ *
+ * `dur` / `fade` は長すぎる音源を切り詰めるため。素材をそのまま鳴らすと
+ * 次の操作に被る場合だけ入れている。
+ */
+type SfxSpec = {
+  /** 実測ピーク（0〜1）。gain を見直すときの根拠として残す */
+  peak: number;
+  gain: number;
+  at?: number;
+  dur?: number;
+  fade?: number;
+};
+
+const SFX: Record<SfxName, SfxSpec> = {
+  // カードを台の上に出す（0.46秒）
+  place: { peak: 0.467, gain: 0.214 },
+  // カードをきる1（4.98秒）。シャッフル全体は長すぎるので、
+  // 手放した一瞬だけを切り出す。最後まで鳴らすと次の操作に被る
+  toss: { peak: 0.402, gain: 0.249, at: 0.09, dur: 0.45, fade: 0.12 },
+  // カードをめくる（0.45秒）。頭に30msの無音がある
+  draw: { peak: 0.37, gain: 0.27, at: 0.03 },
+  // 決定ボタン「ポン」（1.0秒）
+  submit: { peak: 0.481, gain: 0.27 },
+  // 和太鼓でドン（3.35秒）。尻尾は残響なので、
+  // 落款の音（1.85秒後）を濁らせない長さで抜く
+  chime: { peak: 0.345, gain: 0.812, dur: 2.4, fade: 0.6 },
+  // 小鼓（0.97秒）
+  stamp: { peak: 0.651, gain: 0.338 },
+  // ドーン（2.47秒）。密度があって同じピークでも大きく聞こえるので、
+  // 他より深めに絞る。総合結果は一番派手でよいが、ここだけ浮くと耳につく
+  fanfare: { peak: 0.461, gain: 0.36, at: 0.015 },
+};
+
+/**
+ * 全体の音量。生音源は合成音より密度があって同じピークでも大きく聞こえるので、
+ * ここで一段落とす。音量の調整はまずこの数字だけ動かす
+ */
+const MASTER = 0.75;
+
+const FILES = '/sfx/';
+
 let enabled = readStored();
 let ctx: AudioContext | null = null;
+let master: GainNode | null = null;
+const buffers = new Map<SfxName, AudioBuffer>();
+let loading: Promise<void> | null = null;
 const listeners = new Set<() => void>();
 
 function readStored(): boolean {
@@ -51,8 +113,10 @@ export function setSfxEnabled(on: boolean): void {
   } catch {
     /* 保存できなくてもこの回だけは効かせる */
   }
-  // 入れた合図に1音鳴らす。無音のままだと音量が適正か分からない
-  if (on) play('place');
+  // 入れた合図に1音鳴らす。無音のままだと音量が適正か分からない。
+  // 音源を読み終えてから鳴らす。先に鳴らすと1音目だけ合成音になって、
+  // 「入れた音」と「実際に鳴る音」が食い違う
+  if (on) void load().then(() => play('place'));
   for (const fn of listeners) fn();
 }
 
@@ -72,9 +136,42 @@ function audio(): AudioContext | null {
     const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctor) return null;
     ctx = new Ctor();
+    master = ctx.createGain();
+    master.gain.value = MASTER;
+    master.connect(ctx.destination);
   }
   if (ctx.state === 'suspended') void ctx.resume();
   return ctx;
+}
+
+/** 合成音も生音源も、音量調整を一か所に通すため必ずここへ挿す */
+function out(ac: AudioContext): AudioNode {
+  return master ?? ac.destination;
+}
+
+/**
+ * 音源をまとめて読む。
+ *
+ * 1つ失敗しても他は鳴らしたいので、Promise.all では待たずに1本ずつ握り潰す。
+ * 落ちたものは buffers に入らないので、その音だけ自動的に合成音に落ちる。
+ */
+function load(): Promise<void> {
+  if (loading) return loading;
+  const ac = audio();
+  if (!ac) return Promise.resolve();
+
+  loading = Promise.all(
+    (Object.keys(SFX) as SfxName[]).map(async (name) => {
+      try {
+        const res = await fetch(`${FILES}${name}.mp3`);
+        if (!res.ok) return;
+        buffers.set(name, await ac.decodeAudioData(await res.arrayBuffer()));
+      } catch {
+        // 読めなければ合成音で鳴る。ここで止める理由はない
+      }
+    }),
+  ).then(() => undefined);
+  return loading;
 }
 
 /** 単発の音。type と周波数の滑り、長さ、音量だけで作る */
@@ -92,7 +189,7 @@ function tone(
   amp.gain.setValueAtTime(0.0001, t0);
   amp.gain.exponentialRampToValueAtTime(opt.gain, t0 + 0.002);
   amp.gain.exponentialRampToValueAtTime(0.0001, t0 + opt.dur);
-  osc.connect(amp).connect(ac.destination);
+  osc.connect(amp).connect(out(ac));
   osc.start(t0);
   osc.stop(t0 + opt.dur + 0.02);
 }
@@ -113,7 +210,7 @@ function noise(ac: AudioContext, opt: { dur: number; freq: number; q: number; ga
   const amp = ac.createGain();
   amp.gain.setValueAtTime(opt.gain, t0);
   amp.gain.exponentialRampToValueAtTime(0.0001, t0 + opt.dur);
-  src.connect(bp).connect(amp).connect(ac.destination);
+  src.connect(bp).connect(amp).connect(out(ac));
   src.start(t0);
 }
 
@@ -135,10 +232,43 @@ function taiko(
   noise(ac, { dur: 0.06, freq: 320, q: 0.5, gain: opt.gain * 0.5, at: opt.at });
 }
 
+/** 生音源を1発鳴らす。頭の無音を飛ばし、長い素材は途中で絞る */
+function playBuffer(ac: AudioContext, name: SfxName, buf: AudioBuffer): void {
+  const spec = SFX[name];
+  const t0 = ac.currentTime;
+  const at = spec.at ?? 0;
+  const dur = spec.dur ?? Math.max(0, buf.duration - at);
+
+  const src = ac.createBufferSource();
+  src.buffer = buf;
+  const amp = ac.createGain();
+  amp.gain.setValueAtTime(spec.gain, t0);
+
+  // 途中で切る素材は、そのまま止めると「ブツッ」と鳴る。終わりだけ落とす
+  if (spec.fade) {
+    const from = Math.max(0.001, dur - spec.fade);
+    amp.gain.setValueAtTime(spec.gain, t0 + from);
+    amp.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  }
+
+  src.connect(amp).connect(out(ac));
+  src.start(t0, at, dur);
+}
+
 export function play(name: SfxName): void {
   const ac = audio();
   if (!ac) return;
 
+  const buf = buffers.get(name);
+  if (buf) return playBuffer(ac, name, buf);
+
+  // まだ読めていない／読めなかったときの保険。合成音で鳴らしつつ取りに行く
+  void load();
+  synth(ac, name);
+}
+
+/** 音源が無いときの合成音。生音源が入る前の五七五はこの音で遊べていた */
+function synth(ac: AudioContext, name: SfxName): void {
   switch (name) {
     case 'place':
       // かるたを盤に置く音。木は倍音が短く落ちるので矩形波を一瞬だけ

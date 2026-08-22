@@ -41,7 +41,7 @@ src/net/
   events.ts     Socket.IO のイベント名の唯一の定義（EV）+ ラウンド数の検証
   useRoom.ts    クライアント側の接続・再接続・状態受信
 src/ui/         画面。Setup / Local / Online / Game / Turn / Results / parts
-  sound.ts      効果音（Web Audio で合成・既定オフ・localStorage）
+  sound.ts      効果音（public/sfx/*.mp3 を再生・既定オフ・localStorage）
   favorites.ts  お気に入りの句（localStorage・サーバーには置かない）
 server/
   index.ts      Socket.IO のハンドラ。reducer と viewFor を呼ぶだけ
@@ -78,6 +78,16 @@ data/decks/     standard.json / meme.json / spicy.json
 - **`VOTE` も `JUDGE` と同じく表示順の位置（index）で指定する。** ただし
   `viewFor` は**自分の句だけ作者を伏せない**。自分が書いた句を隠す意味はなく、
   民主主義モードで「自分には入れられない」を画面に出すのに要る。
+- **効果音は音源ファイルを鳴らし、読めなければ合成音に落ちる。**
+  出どころは[効果音ラボ](https://soundeffect-lab.info/)（商用無料・クレジット不要）。
+  FAQ で「アプリに同梱して GitHub で公開するのは再配布とみなさない」と明記されているので
+  `public/sfx/` に置いてよい。**直リンクは禁止**なので必ず自分のところから配る。
+  `sound.ts` の合成音（tone / noise / taiko / `synth()`）は**消さない**。
+  取得に失敗してもオフラインでも鳴らすための保険。
+- **音量は `SFX` の表と `MASTER` で決める。** `gain` は「狙いのピーク ÷ 実測ピーク」。
+  素材ごとに素のピークが 0.35〜0.65 とばらつくので、同じ数字を掛けると揃わない。
+  全体を上げ下げしたいときは `MASTER` だけ動かす。
+- **`sound/` は追跡外**（生のダウンロード置き場）。配るのは `public/sfx/` の方だけ。
 - **お気に入りの句はサーバーに置かない**（`src/ui/favorites.ts` = localStorage）。
   置くにはアカウントが要るが、名前を打つだけで遊べる前提を壊してまで
   持つ価値はない。部屋をまたいでも同じブラウザなら見える、で足りている。
