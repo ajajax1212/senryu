@@ -115,3 +115,9 @@ data/decks/     standard.json / meme.json / spicy.json
 - **`spicy` デッキ（r18）を既定で有効にしない。** 明示的に選ばれたときだけ。
 - `dist/` `dist-server/` をコミットしない（`.gitignore` 済み）。
 - push は明示的に言われたときだけ。リモートは `github.com/ajajax1212/senryu`。
+  **push すると Render が自動でビルドして本番に出る。** 本番は
+  https://senryu-geh2.onrender.com/ （無料プランなのでスリープする。
+  しばらく触っていないと初回だけ30秒ほど待たされる）。
+  push 前に、クリーンなクローンで Render と同じ手順を通しておくと事故が減る:
+  `NODE_ENV=production npm.cmd ci --include=dev && npm.cmd run build`。
+  `public/` を追跡し損ねていると、本番だけ音が404になるような形で出る。
