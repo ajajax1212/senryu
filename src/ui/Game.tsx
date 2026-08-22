@@ -70,7 +70,7 @@ function roleOf(s: GameState, me: string): { title: string; note: string } | nul
     // 「親（＝先頭で詠む人）が誰か」ではなく手番の性質だけを知らせる
     if (s.phase !== 'turn') return null;
     return {
-      title: 'あなたも詠み手です',
+      title: '全員が詠みます',
       note: '全員で句を作り、そのあと投票で決めます。自分の句には入れられません',
     };
   }

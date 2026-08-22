@@ -136,7 +136,10 @@ export function Vote({
                   mine
                     ? undefined
                     : () => {
-                        if (!last) play('stamp');
+                        // 投票は「決めた」音にする。落款（小鼓）は句が選ばれた
+                        // ことを示す音なので、まだ決まっていない投票で鳴らすと
+                        // 意味がずれる
+                        if (!last) play('submit');
                         dispatch({ type: 'VOTE', playerId: me, index: i });
                       }
                 }
@@ -234,14 +237,16 @@ export function RoundResult({
 
   useEffect(() => {
     if (!revealing) return;
-    // 発表は太鼓の一発だけにする。
-    //
-    // もとは太鼓のあと1.85秒で落款の音を重ねていた。合成音の太鼓は0.7秒で
-    // 消えていたので間が空いたが、生音源の和太鼓は2.4秒鳴るので小鼓と
-    // 被って濁る。落款は絵（styles.css の stamp-bounce）だけで十分伝わる。
+    // 幕を上げる太鼓 → 落款が落ちる小鼓、の2つ。CSSの演出（styles.css の
+    // line-rise / stamp-bounce）と同じ刻みに合わせてある。ずれると音だけ浮く。
+    // 太鼓は sound.ts 側で1.8秒に切ってあるので、小鼓とは重ならない
     play('chime');
+    const hit = setTimeout(() => play('stamp'), 1850);
     const t = setTimeout(() => setRevealing(false), 5000);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(hit);
+      clearTimeout(t);
+    };
   }, [revealing]);
 
   if (!r) return null;

@@ -68,14 +68,14 @@ const SFX: Record<SfxName, SfxSpec> = {
   draw: { peak: 0.37, gain: 0.27, at: 0.03 },
   // 決定ボタン「ポン」（1.0秒）
   submit: { peak: 0.481, gain: 0.27 },
-  // 和太鼓でドン（3.35秒）。尻尾は残響なので、
-  // 落款の音（1.85秒後）を濁らせない長さで抜く
-  chime: { peak: 0.345, gain: 0.812, dur: 2.4, fade: 0.6 },
+  // 和太鼓でドン（3.35秒）。1.85秒後に落款の小鼓が入るので、
+  // そこへ残響が伸びて被らないよう手前で抜く
+  chime: { peak: 0.345, gain: 0.45, dur: 1.8, fade: 0.5 },
   // 小鼓（0.97秒）
   stamp: { peak: 0.651, gain: 0.338 },
   // ドーン（2.47秒）。密度があって同じピークでも大きく聞こえるので、
   // 他より深めに絞る。総合結果は一番派手でよいが、ここだけ浮くと耳につく
-  fanfare: { peak: 0.461, gain: 0.36, at: 0.015 },
+  fanfare: { peak: 0.461, gain: 0.22, at: 0.015 },
 };
 
 /**
@@ -91,6 +91,8 @@ let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 const buffers = new Map<SfxName, AudioBuffer>();
 let loading: Promise<void> | null = null;
+/** 音源の読み込みが終わったか。終わる前は合成音に落とさない（下の play を見よ） */
+let ready = false;
 const listeners = new Set<() => void>();
 
 function readStored(): boolean {
@@ -170,7 +172,9 @@ function load(): Promise<void> {
         // 読めなければ合成音で鳴る。ここで止める理由はない
       }
     }),
-  ).then(() => undefined);
+  ).then(() => {
+    ready = true;
+  });
   return loading;
 }
 
@@ -262,8 +266,11 @@ export function play(name: SfxName): void {
   const buf = buffers.get(name);
   if (buf) return playBuffer(ac, name, buf);
 
-  // まだ読めていない／読めなかったときの保険。合成音で鳴らしつつ取りに行く
   void load();
+  // **読み込み中は黙る。** ここで合成音を鳴らすと、1音目だけ「ピッ」という
+  // 別の音が出て驚く（実際にそうなった）。数十msで音源が来るので待つ。
+  // 読み終えたのに無いものだけ、合成音の保険に落とす
+  if (!ready) return;
   synth(ac, name);
 }
 
@@ -306,3 +313,12 @@ function synth(ac: AudioContext, name: SfxName): void {
       break;
   }
 }
+
+/**
+ * 前回「音を入れる」を選んでいた人は、開いた時点で読み込んでおく。
+ *
+ * 待つと1音目（たいてい札を置く音）だけ間に合わず、そこだけ違う音が鳴る。
+ * **オフの人は何も読まない**ので、「開いただけで取りに行かない」という
+ * 元の狙いは保たれている。取りに行くのは自分で音を入れた人の分だけ。
+ */
+if (enabled) void load();

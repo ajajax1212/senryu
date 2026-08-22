@@ -11,10 +11,13 @@ import {
 } from '../engine/reducer';
 import { remainingCards } from '../engine/view';
 import { CardView, FreeCardEditor, HaikuView, PhaseBar, Roster } from './parts';
+import { type Draft, clearSlot, placeCard, swapOuter } from './draft';
 import { play } from './sound';
 
 /** 選択中の札。時間切れの自動提出に渡すので画面より上で保持する */
-export type Draft = { upperId?: string; middleId?: string; lowerId?: string };
+// 置き場所の計算は draft.ts に出してある（純粋な計算なのでテストで固定できる）。
+// 他の画面が './Turn' から Draft を読んでいるので、型はここから流し直す
+export type { Draft };
 
 /**
  * 交換と作句を1画面にまとめてある。
@@ -89,6 +92,9 @@ export function Turn({
   const upper = inSlot(draft.upperId, 5);
   const middle = inSlot(draft.middleId, 7);
   const lower = inSlot(draft.lowerId, 5);
+  // 置き場所の判定は必ずこの3つ（＝いま本当に入っている札）から決める。
+  // 生の draft を見ると、外れたはずの id が残って枠が埋まらなくなる
+  const slots = { upper, middle, lower };
   const placedIds = [upper?.id, middle?.id, lower?.id];
   const isPlaced = (c: Card) => placedIds.includes(c.id);
 
@@ -97,16 +103,9 @@ export function Turn({
   const room = (mora: 5 | 7) =>
     tossed.filter((c) => c.mora === mora).length - claimed.filter((c) => c.mora === mora).length;
 
-  /** 5音札は上句→下句の順に、7音札は中句に入れる */
   function place(c: Card) {
     play('place');
-    if (draft.upperId === c.id) return setDraft({ ...draft, upperId: undefined });
-    if (draft.middleId === c.id) return setDraft({ ...draft, middleId: undefined });
-    if (draft.lowerId === c.id) return setDraft({ ...draft, lowerId: undefined });
-    if (c.mora === 7) return setDraft({ ...draft, middleId: c.id });
-    if (!draft.upperId) return setDraft({ ...draft, upperId: c.id });
-    if (!draft.lowerId) return setDraft({ ...draft, lowerId: c.id });
-    setDraft({ ...draft, upperId: c.id });
+    setDraft(placeCard(slots, c));
   }
 
   function toggleToss(c: Card) {
@@ -210,14 +209,14 @@ export function Turn({
           {tab === 'compose' ? (
             <>
               <div className="slots">
-                <Slot mora={5} hint="上の句" card={upper} onClear={() => setDraft({ ...draft, upperId: undefined })} />
-                <Slot mora={7} hint="中の句" card={middle} onClear={() => setDraft({ ...draft, middleId: undefined })} />
-                <Slot mora={5} hint="下の句" card={lower} onClear={() => setDraft({ ...draft, lowerId: undefined })} />
+                <Slot mora={5} hint="上の句" card={upper} onClear={() => setDraft(clearSlot(slots, 'upper'))} />
+                <Slot mora={7} hint="中の句" card={middle} onClear={() => setDraft(clearSlot(slots, 'middle'))} />
+                <Slot mora={5} hint="下の句" card={lower} onClear={() => setDraft(clearSlot(slots, 'lower'))} />
               </div>
               <button
                 className="ghost chip-btn"
                 disabled={!upper || !lower}
-                onClick={() => setDraft({ ...draft, upperId: draft.lowerId, lowerId: draft.upperId })}
+                onClick={() => setDraft(swapOuter(slots))}
               >
                 ↕ 上句と下句を入れ替える
               </button>
