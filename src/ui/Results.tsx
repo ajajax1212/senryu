@@ -66,7 +66,8 @@ export function Judge({
             key={i}
             haiku={h}
             onClick={() => {
-              play('stamp');
+              // ここで音を鳴らさない。選んだ瞬間そのまま発表に移るので、
+              // タップ音と発表の太鼓が1ms差で重なって濁る。太鼓が返事になる
               dispatch({ type: 'JUDGE', playerId: me, index: i });
             }}
           />
@@ -95,6 +96,9 @@ export function Vote({
 }) {
   const voted = s.votes[me];
   const done = me in s.votes;
+  // 自分が最後の1人なら、投票した瞬間に開票へ移って太鼓が鳴る。
+  // そこでタップ音も鳴らすと重なるので、最後の人だけ無音にする
+  const last = s.turnQueue.length === 1 && s.turnQueue[0] === me;
 
   if (done) {
     return (
@@ -132,7 +136,7 @@ export function Vote({
                   mine
                     ? undefined
                     : () => {
-                        play('stamp');
+                        if (!last) play('stamp');
                         dispatch({ type: 'VOTE', playerId: me, index: i });
                       }
                 }
@@ -230,15 +234,14 @@ export function RoundResult({
 
   useEffect(() => {
     if (!revealing) return;
-    // 幕を上げる鈴 → 落款が落ちる音、の2つだけ。CSSの演出（styles.css の
-    // line-rise / stamp-bounce）と同じ刻みに合わせてある。ずれると音だけ浮く
+    // 発表は太鼓の一発だけにする。
+    //
+    // もとは太鼓のあと1.85秒で落款の音を重ねていた。合成音の太鼓は0.7秒で
+    // 消えていたので間が空いたが、生音源の和太鼓は2.4秒鳴るので小鼓と
+    // 被って濁る。落款は絵（styles.css の stamp-bounce）だけで十分伝わる。
     play('chime');
-    const hit = setTimeout(() => play('stamp'), 1850);
     const t = setTimeout(() => setRevealing(false), 5000);
-    return () => {
-      clearTimeout(hit);
-      clearTimeout(t);
-    };
+    return () => clearTimeout(t);
   }, [revealing]);
 
   if (!r) return null;
