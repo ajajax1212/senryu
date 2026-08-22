@@ -3,7 +3,7 @@ import type { Mode } from '../engine/types';
 import { codeFromUrl } from '../net/useRoom';
 import { Local } from './Local';
 import { Online } from './Online';
-import { SoundToggle } from './parts';
+import { FavoritesSheet, SoundToggle } from './parts';
 
 type Route = { kind: 'title' } | { kind: 'local'; mode: Mode } | { kind: 'online' };
 
@@ -21,11 +21,18 @@ export function App() {
 }
 
 function Title({ onPick }: { onPick: (r: Route) => void }) {
+  // お気に入りは部屋ではなくこのブラウザに紐づくので、部屋の外＝タイトルから開く
+  const [favs, setFavs] = useState(false);
+
   return (
     <>
+      {favs && <FavoritesSheet onClose={() => setFavs(false)} />}
       <div className="title-block">
         {/* 効果音は既定でオフ。始める前に入れておけるよう、題字の脇に置く */}
         <div className="title-sfx">
+          <button className="ghost tiny" onClick={() => setFavs(true)}>
+            ★ お気に入りの句
+          </button>
           <SoundToggle />
         </div>
         {/* 題字は縦書きかるた短冊モチーフ。落款スタンプ付き */}
@@ -51,6 +58,9 @@ function Title({ onPick }: { onPick: (r: Route) => void }) {
           </button>
           <button className="grow" onClick={() => onPick({ kind: 'local', mode: 'contest' })}>
             コンテストモード
+          </button>
+          <button className="grow" onClick={() => onPick({ kind: 'local', mode: 'democracy' })}>
+            民主主義モード
           </button>
         </div>
       </div>

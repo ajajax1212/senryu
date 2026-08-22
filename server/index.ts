@@ -70,7 +70,13 @@ function archiveGame(room: Room): void {
         upper: h.upper.text,
         middle: h.middle.text,
         lower: h.lower.text,
-        ...(r.winnerId === h.authorId ? { won: true } : {}),
+        // 民主主義は勝者が複数ありうるので winnerIds を見る。
+        // ここを winnerId だけで判定していると感想戦で1句も「選」が付かない
+        ...((r.mode === 'democracy'
+          ? (r.winnerIds ?? []).includes(h.authorId)
+          : r.winnerId === h.authorId)
+          ? { won: true }
+          : {}),
         ...(r.average !== undefined ? { average: r.average } : {}),
       });
     }
@@ -104,7 +110,7 @@ function scheduleTimeout(room: Room): void {
   const limit =
     game?.phase === 'turn'
       ? game.settings.timeLimits.turn
-      : game?.phase === 'judge' || game?.phase === 'rate'
+      : game?.phase === 'judge' || game?.phase === 'rate' || game?.phase === 'vote'
         ? game.settings.timeLimits.judge
         : null;
 
@@ -245,6 +251,30 @@ io.on('connection', (socket) => {
       });
     },
   );
+
+  /**
+   * 切れた人を席から外す。
+   *
+   * ロビーにいる間だけに限る。ゲーム中に外すと players の並びとエンジンの
+   * p0..pn の対応が崩れて盤面ごと壊れるため。
+   * 繋がっている人は外せない。追い出しの道具ではなく、落ちた人が席を
+   * 占めたまま次を始められなくなるのを解くためのもの。
+   */
+  socket.on(EV.kick, ({ code, playerId }: { code: string; playerId: string }, ack?: Ack) => {
+    withRoom(socket, code, ack, (room) => {
+      if (!requireHost(room, socket, ack)) return;
+      if (room.game) return ack?.({ ok: false, error: 'ゲーム中は外せません' });
+      const target = room.players.find((p) => p.id === playerId);
+      if (!target) return ack?.({ ok: false, error: 'その人はもういません' });
+      if (target.connected) return ack?.({ ok: false, error: '繋がっている人は外せません' });
+      if (target.id === room.hostId) return ack?.({ ok: false, error: 'ホストは外せません' });
+
+      removeFromLobby(room, playerId);
+      resyncSeats(room);
+      ack?.({ ok: true });
+      broadcast(room);
+    });
+  });
 
   socket.on(EV.start, ({ code }: { code: string }, ack?: Ack) => {
     withRoom(socket, code, ack, (room) => {

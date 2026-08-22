@@ -24,6 +24,7 @@ const TIMED: Partial<Record<Phase, 'turn' | 'judge'>> = {
   turn: 'turn',
   judge: 'judge',
   rate: 'judge',
+  vote: 'judge',
 };
 
 /** 1台を回して遊ぶ版。状態も時計もこのブラウザの中で完結する */

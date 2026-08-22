@@ -23,12 +23,15 @@ const HIDDEN = '';
  * 山札の中身と乱数シードも落とす。シードを渡すと次に何を引くかを計算できてしまうため。
  */
 export function viewFor(s: GameState, me: string): PlayerView {
-  const isJudging = s.phase === 'judge';
+  // 民主主義の投票中も、誰の句かは伏せたまま並べる
+  const isJudging = s.phase === 'judge' || s.phase === 'vote';
   const settled = s.phase === 'roundResult' || s.phase === 'gameover';
 
-  // 審査中は表示順だけ配り、誰の句かは配らない。親は位置（index）で選ぶ
+  // 審査中は表示順だけ配り、誰の句かは配らない。親は位置（index）で選ぶ。
+  // ただし自分の句だけは伏せない。自分が書いた句なのだから隠す意味がなく、
+  // 民主主義モードで「自分には入れられない」を画面側で示すのに要る
   const board = isJudging
-    ? shuffledSubmissions(s).map((h) => ({ ...h, authorId: HIDDEN }))
+    ? shuffledSubmissions(s).map((h) => ({ ...h, authorId: h.authorId === me ? me : HIDDEN }))
     : settled
       ? s.lastResult?.submissions ?? []
       : [];
@@ -62,6 +65,8 @@ export function viewFor(s: GameState, me: string): PlayerView {
       : me in s.predictions
         ? { [me]: s.predictions[me] }
         : {},
+    // 投票も同じ。締まる前に他人の票が見えると、多数派に寄せる遊びになる
+    votes: settled ? s.votes : me in s.votes ? { [me]: s.votes[me] } : {},
     // 採点中は他人が何点入れたか見えてはいけない。自分の点だけ残す
     ratings: settled
       ? s.ratings

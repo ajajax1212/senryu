@@ -107,12 +107,16 @@ export function handOf(s: GameState, playerId: string): Card[] {
 export function phaseProgress(s: GameState): { done: number; total: number } | null {
   const n = s.players.length;
   if (s.phase === 'turn') {
-    const total = s.mode === 'contest' ? 1 : n - 1;
+    const total = s.mode === 'contest' ? 1 : s.mode === 'democracy' ? n : n - 1;
     return { done: total - s.turnQueue.length, total };
   }
   if (s.phase === 'rate') {
     const total = n - 1;
     return { done: total - s.turnQueue.length, total };
+  }
+  if (s.phase === 'vote') {
+    // 民主主義は全員が詠んで全員が入れる
+    return { done: n - s.turnQueue.length, total: n };
   }
   return null;
 }
@@ -163,29 +167,112 @@ function goto(s: GameState, phase: Phase, turnQueue: string[]): GameState {
   return { ...s, phase: 'handoff', pendingPhase: phase, turnQueue };
 }
 
+/**
+ * ラウンドの席順を引く。
+ *
+ * 席順を固定にすると「毎回この人の次が自分」になり、親の回ってくる番も
+ * 詠む順も読めてしまう。ラウンドの頭で裏で引き直して崩す。
+ * players 自体は並べ替えない。あれはサーバーの席番号（p0..pn）と対応していて、
+ * 入れ替えると再接続もキックも壊れる。
+ */
+function drawOrder(s: GameState, turn: number): string[] {
+  const ids = s.players.map((p) => p.id);
+  // 山札のシャッフルや提出順の混ぜと同じ種を使うと並びが相関するので、別の数で散らす。
+  //
+  // 掛け算で散らさず 32bit の範囲に畳んでから混ぜる。seed は Date.now() なので
+  // 1.7e12 あり、大きな数を掛けると 2^53（≒9.0e15）を越えて刻みが粗くなる。
+  // いまの係数なら足した turn は生き残るが、係数を少し変えただけで
+  // 「ラウンドが変わっても同じ並び」に化ける類の壊れ方をする。
+  // 整数の範囲に収めておけば、そこを気にしなくてよくなる。
+  const mixed = ((s.seed >>> 0) ^ Math.imul(turn + 13, 0x9e3779b1)) >>> 0;
+  return shuffle(ids, makeRng(mixed));
+}
+
 /** 1手番ぶんの準備。親を1つ進めて手番のキューを作る */
 function beginTurn(s: GameState, turn: number): GameState {
   const n = s.players.length;
-  const activeIndex = turn % n;
+  // ラウンドの頭（人数で割り切れる手番）でだけ引き直す。途中で変えると
+  // 「まだ親をやっていない人」が2回来ることがある
+  const order = turn % n === 0 ? drawOrder(s, turn) : s.order;
+  const seat = turn % n;
+  const activeId = order[seat];
+  const activeIndex = s.players.findIndex((p) => p.id === activeId);
+  // 引いた順のまま、いまの席の次から回す
+  const after = Array.from({ length: n - 1 }, (_, i) => order[(seat + 1 + i) % n]);
   const queue =
-    s.mode === 'contest'
-      ? [s.players[activeIndex].id]
-      : Array.from({ length: n - 1 }, (_, i) => s.players[(activeIndex + 1 + i) % n].id);
+    s.mode === 'contest' ? [activeId] : s.mode === 'democracy' ? [activeId, ...after] : after;
 
   return goto(
     {
       ...s,
       turn,
+      order,
       activeIndex,
       submissions: [],
       ratings: {},
       predictions: {},
+      votes: {},
       exchangesUsed: {},
       lastResult: null,
     },
     'turn',
     queue,
   );
+}
+
+/**
+ * 民主主義の集計。最多得票の句の作者に1点。同票なら全員に1点。
+ * 得票数をそのまま点にすると「広く浅く受ける句」が強くなり、
+ * 尖った句の価値が下がるので、1位に1点だけにしてある。
+ */
+function tallyVotes(s: GameState): GameState {
+  const board = shuffledSubmissions(s);
+  const counts = board.map((_, i) => Object.values(s.votes).filter((v) => v === i).length);
+  const max = Math.max(0, ...counts);
+  // 誰も入れなかった（全員時間切れ）ときは勝者なし
+  const winnerIndexes = max > 0 ? counts.flatMap((c, i) => (c === max ? [i] : [])) : [];
+  const winnerIds = new Set(winnerIndexes.map((i) => board[i].authorId));
+  const voteCounts: Record<string, number> = {};
+  board.forEach((h, i) => {
+    voteCounts[h.authorId] = counts[i];
+  });
+
+  const roundResult: RoundResult = {
+    turn: s.turn,
+    mode: s.mode,
+    submissions: s.submissions,
+    votes: s.votes,
+    winnerIndexes,
+    winnerIds: [...winnerIds],
+    voteCounts,
+  };
+
+  return {
+    ...s,
+    phase: 'roundResult',
+    pendingPhase: null,
+    turnQueue: [],
+    players: s.players.map((p) =>
+      winnerIds.has(p.id)
+        ? { ...p, score: p.score + 1, scoreHistory: [...p.scoreHistory, 1] }
+        : { ...p, scoreHistory: [...p.scoreHistory, 0] },
+    ),
+    lastResult: roundResult,
+    history: [...s.history, roundResult],
+  };
+}
+
+function applyVote(s: GameState, playerId: string, index: number): GameState {
+  const target = shuffledSubmissions(s)[index];
+  // 自分の句には入れられない。入れられると自画自賛が最適解になり読み合いが死ぬ
+  if (!target || target.authorId === playerId) return s;
+  const voted: GameState = {
+    ...s,
+    votes: { ...s.votes, [playerId]: index },
+    turnQueue: s.turnQueue.filter((id) => id !== playerId),
+  };
+  if (voted.turnQueue.length === 0) return tallyVotes(voted);
+  return goto(voted, 'vote', voted.turnQueue);
 }
 
 function scoreRound(s: GameState): GameState {
@@ -246,6 +333,8 @@ function submit(s: GameState, me: Player, upper?: Card, middle?: Card, lower?: C
     return goto(next, 'turn', queue);
   }
   if (s.mode === 'dokudan') return goto(next, 'judge', [activePlayer(next).id]);
+  // 民主主義は詠んだ全員がそのまま投票に回る
+  if (s.mode === 'democracy') return goto(next, 'vote', next.order.slice());
 
   const raters = next.players.filter((_, i) => i !== next.activeIndex).map((p) => p.id);
   return goto(next, 'rate', raters);
@@ -347,6 +436,7 @@ export function reducer(state: GameState, action: Action): GameState {
         deck7: pile7,
         discard: [],
         turn: 0,
+        order: players.map((p) => p.id),
         activeIndex: 0,
         turnQueue: [],
         phase: 'setup',
@@ -355,6 +445,7 @@ export function reducer(state: GameState, action: Action): GameState {
         submissions: [],
         ratings: {},
         predictions: {},
+        votes: {},
         lastResult: null,
         history: [],
         seed,
@@ -438,6 +529,12 @@ export function reducer(state: GameState, action: Action): GameState {
       return applyJudge(state, action.index);
     }
 
+    case 'VOTE': {
+      if (state.phase !== 'vote' || state.mode !== 'democracy') return state;
+      if (!canAct(state, action.playerId)) return state;
+      return applyVote(state, action.playerId, action.index);
+    }
+
     case 'PREDICT': {
       // 親は選ぶ側なので予想しない。得点には関わらないので、選ぶまで何度でも変えられる
       if (state.phase !== 'judge' || state.mode !== 'dokudan') return state;
@@ -468,6 +565,10 @@ export function reducer(state: GameState, action: Action): GameState {
         }
         case 'judge':
           return applyJudge(state, 0);
+        case 'vote':
+          // 入れ損ねた票は入れない。適当に入れると勝者が運で決まるので、
+          // 集まった票だけで数える。誰も入れなければ勝者なし
+          return tallyVotes({ ...state, turnQueue: [] });
         case 'rate': {
           const targets = action.playerId ? [action.playerId] : [...state.turnQueue];
           return targets.reduce(

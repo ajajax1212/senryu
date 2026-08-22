@@ -10,6 +10,15 @@ import type { Card, GameState, Haiku } from '../engine/types';
 import { FREE_CARD_MAX } from '../engine/types';
 import type { ArchivedHaiku } from '../net/useRoom';
 import { activePlayer, roundNumber, seatNumber, totalRounds } from '../engine/reducer';
+import {
+  type Favorite,
+  favoriteId,
+  favorites,
+  isFavorited,
+  removeFavorite,
+  subscribeFavorites,
+  toggleFavorite,
+} from './favorites';
 import { setSfxEnabled, sfxEnabled, subscribeSfx } from './sound';
 
 export function CardView({
@@ -316,17 +325,28 @@ export function Roster({
   leadLabel,
   doneLabel,
   pendingLabel,
+  hasLead = true,
 }: {
   s: GameState;
   /** 親／詠み手など、その手番の中心にいる人の肩書き */
   leadLabel: string;
   doneLabel: string;
   pendingLabel: string;
+  /**
+   * 中心にいる人がいるか。民主主義の投票は全員が同じ立場なので、
+   * 親を特別扱いすると「その人だけ投票していない」ように見えてしまう
+   */
+  hasLead?: boolean;
 }) {
   const lead = activePlayer(s);
-  const seats = s.players.map((p) => {
+  // 並べる順は players（＝サーバーの席番号）ではなく、そのラウンドの抽選結果。
+  // 進行が order の順で回るのに一覧が固定順だと、「次は誰か」が読めない
+  const seated = s.order?.length
+    ? s.order.map((id) => s.players.find((p) => p.id === id)).filter((p) => p !== undefined)
+    : s.players;
+  const seats = seated.map((p) => {
     const state: SeatState =
-      p.id === lead.id ? 'lead' : s.turnQueue.includes(p.id) ? 'pending' : 'done';
+      hasLead && p.id === lead.id ? 'lead' : s.turnQueue.includes(p.id) ? 'pending' : 'done';
     return { id: p.id, name: p.name, state };
   });
 
@@ -363,6 +383,92 @@ export function shareOnX(poem: { upper: string; middle: string; lower: string },
   const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(lines.join('\n'))}`;
   window.open(url, '_blank', 'noopener,noreferrer');
 }
+
+/**
+ * お気に入りの☆。押すたびに入る／外れる。
+ *
+ * 保存先はそのブラウザなので、部屋が変わっても押した句は残る（favorites.ts）。
+ */
+export function FavoriteStar({ poem }: { poem: ArchivedHaiku }) {
+  const id = favoriteId(poem);
+  const on = useSyncExternalStore(
+    subscribeFavorites,
+    () => isFavorited(id),
+    () => false,
+  );
+  return (
+    <button
+      type="button"
+      className={`ghost fav-star${on ? ' on' : ''}`}
+      title={on ? 'お気に入りから外す' : 'お気に入りに入れる'}
+      onClick={() => toggleFavorite(poem)}
+    >
+      {on ? '★' : '☆'}
+    </button>
+  );
+}
+
+/**
+ * お気に入りの一覧。タイトル画面から開く。
+ *
+ * 部屋の感想戦（PoemGallery）と違って、こちらは部屋にもサーバーにも属さない。
+ * 同じブラウザで遊んでいる限り、どの部屋の句でも一緒に並ぶ。
+ */
+export function FavoritesSheet({ onClose }: { onClose: () => void }) {
+  const list = useSyncExternalStore<Favorite[]>(
+    subscribeFavorites,
+    favorites,
+    () => EMPTY_FAVORITES,
+  );
+
+  return (
+    <div className="announce" onClick={onClose}>
+      <div className="gallery-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="gallery-head">
+          <div className="label-mark">お気に入りの句（{list.length}）</div>
+          <button className="ghost" onClick={onClose}>
+            閉じる
+          </button>
+        </div>
+
+        {list.length === 0 ? (
+          <p className="sub center">
+            まだありません。ロビーの「この部屋の句」で☆を押すとここに溜まります。
+          </p>
+        ) : (
+          <div className="gallery-scroll">
+            <p className="sub">
+              このブラウザにだけ保存しています。別の端末には引き継がれません。
+            </p>
+            <div className="gallery-poems">
+              {list.map((f) => (
+                <div key={f.id} className="gallery-poem">
+                  <div className="gallery-lines">
+                    <span>{f.upper}</span>
+                    <span>{f.middle}</span>
+                    <span>{f.lower}</span>
+                  </div>
+                  <div className="gallery-meta">
+                    <span className="gallery-author">{f.authorName}</span>
+                    <button className="ghost share-x" title="Xで共有する" onClick={() => shareOnX(f, f.authorName)}>
+                      Xで共有
+                    </button>
+                    <button className="ghost fav-star on" title="お気に入りから外す" onClick={() => removeFavorite(f.id)}>
+                      ★
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** useSyncExternalStore はサーバー側の値が毎回同じ参照であることを要求する */
+const EMPTY_FAVORITES: Favorite[] = [];
 
 /**
  * その部屋で詠まれた句を並べる感想戦の画面。
@@ -420,6 +526,7 @@ export function PoemGallery({
                           >
                             Xで共有
                           </button>
+                          <FavoriteStar poem={p} />
                         </div>
                       </div>
                     ))}

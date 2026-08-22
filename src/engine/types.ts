@@ -1,5 +1,5 @@
 export type DeckId = 'standard' | 'meme' | 'spicy';
-export type Mode = 'dokudan' | 'contest';
+export type Mode = 'dokudan' | 'contest' | 'democracy';
 
 export type Card = {
   id: string;
@@ -104,6 +104,8 @@ export type Phase =
   | 'turn'
   | 'judge'
   | 'rate'
+  /** 民主主義: 全員がどの句に入れるか決める */
+  | 'vote'
   | 'roundResult'
   | 'gameover';
 
@@ -119,6 +121,18 @@ export type RoundResult = {
   predictions?: Record<string, number>;
   ratings?: Record<string, number>;
   average?: number;
+  /** 民主主義: 投票した人 -> 入れた表示位置 */
+  votes?: Record<string, number>;
+  /** 民主主義: 最多得票の表示位置。同票なら複数 */
+  winnerIndexes?: number[];
+  /** 民主主義: 最多得票だった人。同票なら複数 */
+  winnerIds?: string[];
+  /**
+   * 民主主義: 誰の句に何票入ったか。表示位置ではなく作者IDで持つ。
+   * 表示位置は審査中だけの並びなので、結果画面でそれを引き直させると
+   * 並べ替えの再現に依存する。結果は作者が分かっている場面なので素直に持つ
+   */
+  voteCounts?: Record<string, number>;
 };
 
 export type GameState = {
@@ -130,6 +144,13 @@ export type GameState = {
   discard: DiscardedCard[];
   /** 何番目の手番か（0始まり）。ラウンド番号ではない */
   turn: number;
+  /**
+   * このラウンドの席順（playerId の並び）。ラウンドの頭で引き直す。
+   * players 自体は並べ替えない。あれはサーバーの席番号と対応していて、
+   * 入れ替えると再接続やキックの土台が崩れる。
+   */
+  order: string[];
+  /** いま親（提出者）の players 上の位置。order から引いて入れる */
   activeIndex: number;
   turnQueue: string[];
   phase: Phase;
@@ -144,6 +165,8 @@ export type GameState = {
    * 得点には一切関わらない。親が選ぶまでの待ち時間を能動的にするためだけのもの。
    */
   predictions: Record<string, number>;
+  /** 民主主義の投票。playerId -> 表示順の位置 */
+  votes: Record<string, number>;
   lastResult: RoundResult | null;
   /** 確定したラウンド結果を古い順に積む。総合結果の振り返りで使う */
   history: RoundResult[];
@@ -172,6 +195,11 @@ export type Action =
    * ので、予想を配っても誰の句かは割れない。何度でも選び直せる。
    */
   | { type: 'PREDICT'; playerId: string; index: number }
+  /**
+   * 民主主義: 句に投票する。JUDGE / PREDICT と同じく表示順の位置で指定する。
+   * 自分の句には入れられない。
+   */
+  | { type: 'VOTE'; playerId: string; index: number }
   | {
       type: 'TIMEOUT';
       playerId?: string;

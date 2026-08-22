@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Action, GameState, Haiku } from '../engine/types';
+import type { Action, GameState, Haiku, RoundResult } from '../engine/types';
 import {
   activePlayer,
   playerById,
@@ -71,6 +71,76 @@ export function Judge({
             }}
           />
         ))}
+      </div>
+    </>
+  );
+}
+
+/**
+ * 民主主義モードの投票画面。
+ *
+ * 見た目は勝ち句予想（guess-slot）と揃えてある。やることが同じ「1句を選ぶ」なのに
+ * 別の見た目にすると、どちらの操作をしているのか分からなくなるため。
+ */
+export function Vote({
+  s,
+  me,
+  board,
+  dispatch,
+}: {
+  s: GameState;
+  me: string;
+  board: Haiku[];
+  dispatch: (a: Action) => void;
+}) {
+  const voted = s.votes[me];
+  const done = me in s.votes;
+
+  if (done) {
+    return (
+      <>
+        <PhaseBar s={s} title="投票中" />
+        <div className="wait-stage">
+          <div className="wait-main">
+            {voted !== undefined && board[voted] && <HaikuView haiku={board[voted]} />}
+          </div>
+          <div className="panel col wait-side">
+            <div className="label-mark">投票しました</div>
+            <ProgressBar s={s} />
+            <Roster s={s} hasLead={false} leadLabel="" doneLabel="投票済" pendingLabel="投票中" />
+          </div>
+        </div>
+        <p className="sub center">全員が入れ終わるまで、どこに票が集まっているかは見えません</p>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <PhaseBar s={s} title="一番良かった句に投票" />
+      <p className="sub center">
+        句をタップすると投票できます。自分の句には入れられません。
+      </p>
+      <div className="board">
+        {board.map((h, i) => {
+          const mine = h.authorId === me;
+          return (
+            <div key={i} className={`guess-slot${mine ? ' mine' : ''}`}>
+              <HaikuView
+                haiku={h}
+                onClick={
+                  mine
+                    ? undefined
+                    : () => {
+                        play('stamp');
+                        dispatch({ type: 'VOTE', playerId: me, index: i });
+                      }
+                }
+              />
+              {mine && <div className="guess-mark">あなたの句</div>}
+            </div>
+          );
+        })}
       </div>
     </>
   );
@@ -148,8 +218,13 @@ export function RoundResult({
   dispatch: (a: Action) => void;
 }) {
   const r = s.lastResult;
+  // 民主主義は同票がありうる。落款を押して見せる1句は最多得票の先頭にする
   const won =
-    r?.mode === 'contest' ? r.submissions[0] : r?.submissions.find((h) => h.authorId === r.winnerId);
+    r?.mode === 'contest'
+      ? r.submissions[0]
+      : r?.mode === 'democracy'
+        ? r.submissions.find((h) => r.winnerIds?.includes(h.authorId))
+        : r?.submissions.find((h) => h.authorId === r.winnerId);
   const stamp = r?.mode === 'contest' && r.average !== undefined ? gradeFor(r.average) : '選';
   const [revealing, setRevealing] = useState(Boolean(won));
 
@@ -180,7 +255,11 @@ export function RoundResult({
               <HaikuView haiku={won} stamp={stamp} />
             </div>
             <div className="reveal-name">
-              {r.mode === 'contest' ? `${r.average!.toFixed(1)}点` : name(r.winnerId!)}
+              {r.mode === 'contest'
+                ? `${r.average!.toFixed(1)}点`
+                : r.mode === 'democracy'
+                  ? (r.winnerIds ?? []).map(name).join('・')
+                  : name(r.winnerId!)}
             </div>
             {/* 勝手に閉じるまでの残りを見せる。何秒眺めていられるのか分からないと、
                 読み上げている途中で画面が変わったように感じる */}
@@ -192,9 +271,16 @@ export function RoundResult({
         </div>
       )}
 
-      <PhaseBar s={s} title={`${activePlayer(s).name} の番 — 結果`} />
+      {/* 民主主義は誰の番でもない。親のいないモードで人名を出すと、
+          その人が選んだように読めてしまう */}
+      <PhaseBar
+        s={s}
+        title={r.mode === 'democracy' ? '投票の結果' : `${activePlayer(s).name} の番 — 結果`}
+      />
 
-      {r.mode === 'dokudan' ? (
+      {r.mode === 'democracy' ? (
+        <DemocracyResult s={s} r={r} />
+      ) : r.mode === 'dokudan' ? (
         <>
           <p className="sub center">{activePlayer(s).name} が選んだのは</p>
           <div className="board">
@@ -264,6 +350,61 @@ export function RoundResult({
   );
 }
 
+/**
+ * 民主主義の結果。票の集まり方そのものが見どころなので、
+ * 勝ち句だけでなく全句に何票入ったかを並べる。同票なら全員が勝ち。
+ */
+function DemocracyResult({ s, r }: { s: GameState; r: RoundResult }) {
+  const name = (id: string) => playerById(s, id)?.name ?? '?';
+  const winners = r.winnerIds ?? [];
+  const counts = r.voteCounts ?? {};
+  const sorted = [...r.submissions].sort(
+    (a, b) => (counts[b.authorId] ?? 0) - (counts[a.authorId] ?? 0),
+  );
+
+  return (
+    <>
+      <p className="sub center">
+        {winners.length === 0
+          ? '票が入りませんでした'
+          : winners.length > 1
+            ? `同票 — ${winners.map(name).join('・')} が揃って＋1pt`
+            : `${name(winners[0])} が選ばれました`}
+      </p>
+      <div className="board">
+        {sorted.map((h) => {
+          const win = winners.includes(h.authorId);
+          const n = counts[h.authorId] ?? 0;
+          return (
+            <HaikuView
+              key={h.authorId}
+              haiku={h}
+              author={`${name(h.authorId)} ${n}票${win ? ' ＋1pt' : ''}`}
+              variant={win ? 'won' : 'lost'}
+              {...(win ? { stamp: '選' } : {})}
+            />
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+/**
+ * 得点の見せ方。平均点で競うのはコンテストだけで、独断と偏見も民主主義も
+ * 「選ばれた回数」を数える。ここを each 箇所で `=== 'dokudan'` と書くと、
+ * モードが増えるたびに書き漏らした場所だけ表記が崩れる
+ */
+function isAverageScore(s: GameState): boolean {
+  return s.mode === 'contest';
+}
+function scoreText(s: GameState, n: number): string {
+  return isAverageScore(s) ? n.toFixed(1) : String(n);
+}
+function scoreUnit(s: GameState): string {
+  return isAverageScore(s) ? '点' : '勝';
+}
+
 /** 途中経過の並び。1行に収める（結果画面の縦を食わないこと優先） */
 function Standings({ s }: { s: GameState }) {
   const table = ranking(s);
@@ -275,8 +416,8 @@ function Standings({ s }: { s: GameState }) {
         <span key={p.id} className={`standing${p.score === top && top > 0 ? ' lead' : ''}`}>
           {p.name}
           <b>
-            {s.mode === 'dokudan' ? p.score : p.score.toFixed(1)}
-            {s.mode === 'dokudan' ? '勝' : '点'}
+            {scoreText(s, p.score)}
+            {scoreUnit(s)}
           </b>
         </span>
       ))}
@@ -297,7 +438,7 @@ export function GameOver({
 }) {
   const table = ranking(s);
   const top = table[0].score;
-  const unit = s.mode === 'dokudan' ? '勝' : '点';
+  const unit = scoreUnit(s);
   const name = (id: string) => playerById(s, id)?.name ?? '?';
   // 順位と振り返りを1枚に積むとスクロールが長くなり、勝敗が一目で分からない
   const [tab, setTab] = useState<'result' | 'gallery'>('result');
@@ -348,7 +489,7 @@ export function GameOver({
                 <tr>
                   <th>#</th>
                   <th>名前</th>
-                  <th className="num">{s.mode === 'dokudan' ? '選ばれた回数' : '平均点'}</th>
+                  <th className="num">{isAverageScore(s) ? '平均点' : '選ばれた回数'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -357,7 +498,7 @@ export function GameOver({
                     <td>{p.score === top ? '★' : i + 1}</td>
                     <td>{p.name}</td>
                     <td className="num">
-                      {s.mode === 'dokudan' ? p.score : p.score.toFixed(1)}
+                      {scoreText(s, p.score)}
                       {unit}
                     </td>
                   </tr>
@@ -375,7 +516,9 @@ export function GameOver({
           <p className="sub">
             {s.mode === 'dokudan'
               ? '大会中に親に選ばれた名句集です'
-              : '各プレイヤーが詠んだ句と獲得点数です'}
+              : s.mode === 'democracy'
+                ? '大会中に投票で選ばれた名句集です'
+                : '各プレイヤーが詠んだ句と獲得点数です'}
           </p>
 
           <div className="gallery-list col">
@@ -386,7 +529,7 @@ export function GameOver({
                   <div className="player-gallery-header row">
                     <span className="player-name">{p.name}</span>
                     <span className="badge">
-                      {s.mode === 'dokudan' ? `${p.score}勝` : `${p.score.toFixed(1)}点`}
+                      {`${scoreText(s, p.score)}${scoreUnit(s)}`}
                     </span>
                   </div>
                   {mine.length === 0 ? (
@@ -459,14 +602,19 @@ function featuredHaiku(
   // 優勝者が最後に選ばれた句。複数勝っていてもどれが上とは言えないので最新を出す
   for (let i = s.history.length - 1; i >= 0; i--) {
     const r = s.history[i];
-    if (r.winnerId !== winnerId) continue;
+    const chosen =
+      r.mode === 'democracy' ? (r.winnerIds ?? []).includes(winnerId) : r.winnerId === winnerId;
+    if (!chosen) continue;
     const h = r.submissions.find((x) => x.authorId === winnerId);
     if (h) return { haiku: h, authorId: winnerId, title: '優勝者の句', badge: '優勝' };
   }
   return null;
 }
 
-/** プレイヤーごとの振り返り。独断は選ばれた句、コンテストは詠んだ句と点数 */
+/**
+ * プレイヤーごとの振り返り。独断と民主主義は選ばれた句、コンテストは詠んだ句と点数。
+ * 民主主義は同票がありうるので、勝者が複数いてもすべて拾う
+ */
 function poemsByPlayer(s: GameState): Record<string, { haiku: Haiku; detail: string }[]> {
   const out: Record<string, { haiku: Haiku; detail: string }[]> = {};
   for (const p of s.players) out[p.id] = [];
@@ -476,6 +624,12 @@ function poemsByPlayer(s: GameState): Record<string, { haiku: Haiku; detail: str
       const won = r.submissions.find((h) => h.authorId === r.winnerId);
       // 席が入れ替わった等で見覚えのないIDが来ても落ちないようにする
       if (won && out[r.winnerId]) out[r.winnerId].push({ haiku: won, detail: '選' });
+    } else if (r.mode === 'democracy') {
+      for (const id of r.winnerIds ?? []) {
+        const won = r.submissions.find((h) => h.authorId === id);
+        const n = r.voteCounts?.[id];
+        if (won && out[id]) out[id].push({ haiku: won, detail: n ? `${n}票` : '選' });
+      }
     } else if (r.mode === 'contest') {
       const h = r.submissions[0];
       if (h && out[h.authorId]) {

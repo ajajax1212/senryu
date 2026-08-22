@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Action, GameState, Haiku } from '../engine/types';
 import { activePlayer, roundNumber, seatNumber, seatedPlayer, totalRounds } from '../engine/reducer';
 import { Turn, type Draft } from './Turn';
-import { GameOver, Judge, Rate, RoundResult } from './Results';
+import { GameOver, Judge, Rate, RoundResult, Vote } from './Results';
 
 export type GameProps = {
   s: GameState;
@@ -31,6 +31,8 @@ export function Game({ s, me, board, draft, setDraft, dispatch, canAdvance, onRe
         return <Turn s={s} me={me} draft={draft} setDraft={setDraft} dispatch={dispatch} />;
       case 'judge':
         return <Judge s={s} me={me} board={board} dispatch={dispatch} />;
+      case 'vote':
+        return <Vote s={s} me={me} board={board} dispatch={dispatch} />;
       case 'rate':
         return <Rate s={s} me={me} dispatch={dispatch} />;
       case 'roundResult':
@@ -62,6 +64,15 @@ function roleOf(s: GameState, me: string): { title: string; note: string } | nul
     }
     if (s.phase !== 'turn') return null;
     return { title: 'あなたは詠み手です', note: `親（${host.name}）の独断と偏見で選ばれる句を作ってください` };
+  }
+  if (s.mode === 'democracy') {
+    // 全員が詠み、全員が投票する。役割が分かれないので、代わりに
+    // 「親（＝先頭で詠む人）が誰か」ではなく手番の性質だけを知らせる
+    if (s.phase !== 'turn') return null;
+    return {
+      title: 'あなたも詠み手です',
+      note: '全員で句を作り、そのあと投票で決めます。自分の句には入れられません',
+    };
   }
   // コンテストは1人ずつ詠むので、詠む人以外は全員が審査員になる
   if (s.phase !== 'turn' && s.phase !== 'rate') return null;

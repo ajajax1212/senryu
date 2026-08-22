@@ -164,6 +164,15 @@ export function useRoom() {
     if (!res.ok) setError(res.error ?? '開始できませんでした');
   }, [emit, code]);
 
+  /** 切れたまま戻ってこない人を席から外す。ロビーにいる間だけ */
+  const kick = useCallback(
+    async (playerId: string) => {
+      const res = await emit(EV.kick, { code, playerId });
+      if (!res.ok) setError(res.error ?? '外せませんでした');
+    },
+    [emit, code],
+  );
+
   /** 総合結果からロビーへ戻る。モードや札を変えてもう一戦するため */
   const toLobby = useCallback(async () => {
     const res = await emit(EV.toLobby, { code });
@@ -178,5 +187,5 @@ export function useRoom() {
     [emit, code],
   );
 
-  return { state, me, code, error, connected, create, join, rejoin, configure, startGame, toLobby, send, setError };
+  return { state, me, code, error, connected, create, join, rejoin, configure, startGame, kick, toLobby, send, setError };
 }

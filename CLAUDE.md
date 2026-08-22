@@ -22,7 +22,7 @@ TypeScript / React 19 / Vite 6 / Express 4 / Socket.IO 4 / Vitest 2。ESM（`"ty
 | `npm.cmd run build` | クライアント（`dist/`）とサーバー（`dist-server/`）の両方 |
 | `npm.cmd run dev` | Vite 開発サーバー（5173）。**クライアントのみ＝1台版の確認用** |
 | `npm.cmd run dev:server` | サーバーだけ watch 起動 |
-| `npm.cmd test` | Vitest 89件（エンジン78 / 通信イベント6 / 札データ5） |
+| `npm.cmd test` | Vitest 104件（エンジン93 / 通信イベント6 / 札データ5） |
 | `npm.cmd run validate` | 札データの検証 |
 | `npm.cmd run cards:export` / `cards:import` | 札データの CSV 往復。**import 後は自動で validate が走る** |
 
@@ -40,7 +40,9 @@ src/engine/     ゲームのルール。React も Socket.IO も知らない純�
 src/net/
   events.ts     Socket.IO のイベント名の唯一の定義（EV）+ ラウンド数の検証
   useRoom.ts    クライアント側の接続・再接続・状態受信
-src/ui/         画面。Setup / Local / Online / Game / Turn / Results
+src/ui/         画面。Setup / Local / Online / Game / Turn / Results / parts
+  sound.ts      効果音（Web Audio で合成・既定オフ・localStorage）
+  favorites.ts  お気に入りの句（localStorage・サーバーには置かない）
 server/
   index.ts      Socket.IO のハンドラ。reducer と viewFor を呼ぶだけ
   rooms.ts      部屋・席・token・タイマーの管理。ルールは持たない
@@ -67,7 +69,21 @@ data/decks/     standard.json / meme.json / spicy.json
   持たせない。ゲームのルールではなく部屋の付属物なので。ゲーム中は配らない。
 - **1ラウンド = 全員が1回ずつ親（提出者）をやること。** 総手番数は
   ラウンド数 × 人数。ここは一度取り違えて直した経緯があるので、
-  「ラウンド」と「手番」を混同しない。
+  「ラウンド」と「手番」を混同しない。民主主義モードには親がいないが、
+  手番の数え方は他モードと揃えてある（ラウンド数の意味をモードで変えないため）。
+- **席順（`order`）はラウンドの頭で引き直す。** 固定だと親が回ってくる番も
+  詠む順も読めてしまう。ただし **`players` 自体は絶対に並べ替えない。**
+  あれはサーバーの席番号 `p0..pn` と対応していて、入れ替えると再接続も
+  「席を空ける」も壊れる。
+- **`VOTE` も `JUDGE` と同じく表示順の位置（index）で指定する。** ただし
+  `viewFor` は**自分の句だけ作者を伏せない**。自分が書いた句を隠す意味はなく、
+  民主主義モードで「自分には入れられない」を画面に出すのに要る。
+- **お気に入りの句はサーバーに置かない**（`src/ui/favorites.ts` = localStorage）。
+  置くにはアカウントが要るが、名前を打つだけで遊べる前提を壊してまで
+  持つ価値はない。部屋をまたいでも同じブラウザなら見える、で足りている。
+- **「席を空ける」（`host:kick`）はロビーにいる間・切れている人だけ。** 追い出しの
+  道具ではなく、落ちた人が席を占めたまま次を始められなくなるのを解くためのもの。
+  ゲーム中に外すと `players` の並びが `p0..pn` とずれて盤面ごと壊れる。
 - **勝ち句予想（`PREDICT`）は得点に関わらない。** 待ち時間を能動的にするためだけの
   仕掛けなので、順位計算には一切入れない。
 - **`JUDGE` は作者IDではなく表示順の位置（index）で指定する。** そうしておけば

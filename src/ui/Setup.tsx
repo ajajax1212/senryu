@@ -9,6 +9,11 @@ const MAX_PLAYERS = 8;
 export const MODES = [
   { id: 'dokudan' as const, label: '独断と偏見モード', note: '親が好みで一番良い句を選ぶ。全員同時に作句できる' },
   { id: 'contest' as const, label: 'コンテストモード', note: '1人ずつ提出し、他の全員が100点満点で採点する' },
+  {
+    id: 'democracy' as const,
+    label: '民主主義モード',
+    note: '全員で作句し、投票で決める。同票なら全員が勝ち',
+  },
 ];
 
 export function Setup({

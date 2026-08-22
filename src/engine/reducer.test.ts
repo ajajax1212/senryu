@@ -67,6 +67,25 @@ function submitSeated(s: GameState): GameState {
   return submitFor(s, seatedPlayerId(s)!);
 }
 
+/**
+ * 席順はラウンドごとに抽選されるので、テストは「誰が」ではなく
+ * 「いま親の人」「いまキューにいる人」を state から引いて動かす。
+ */
+function hostId(s: GameState): string {
+  return s.players[s.activeIndex].id;
+}
+function sorted(ids: string[]): string[] {
+  return [...ids].sort();
+}
+/** いま手番のキューに入っている人（席順は抽選なので id を決め打ちしない） */
+function queued(s: GameState, i = 0): string {
+  return s.turnQueue[i];
+}
+/** 親（提出者）以外の全員 */
+function others(s: GameState): string[] {
+  return s.players.filter((p) => p.id !== hostId(s)).map((p) => p.id);
+}
+
 describe('配札', () => {
   it('全員が5音4枚と7音2枚を持つ', () => {
     const s = start('dokudan', ['あ', 'い', 'う', 'え']);
@@ -92,8 +111,8 @@ describe('配札', () => {
 describe('独断と偏見モード', () => {
   it('親以外の全員が提出したあと親が審査する', () => {
     let s = start('dokudan');
-    expect(s.activeIndex).toBe(0);
-    expect(s.turnQueue).toEqual(['p1', 'p2']); // 親(p0)は詠まない
+    // 席順は抽選なので、誰が親かは決め打ちできない。親以外の全員が詠むことだけ見る
+    expect(sorted(s.turnQueue)).toEqual(sorted(s.players.filter((p) => p.id !== hostId(s)).map((p) => p.id)));
 
     s = apply(s, { type: 'TAKE_SEAT' });
     s = submitSeated(s);
@@ -103,14 +122,14 @@ describe('独断と偏見モード', () => {
     s = submitSeated(s);
 
     expect(s.pendingPhase).toBe('judge');
-    expect(seatedPlayerId(s)).toBe('p0');
+    expect(seatedPlayerId(s)).toBe(hostId(s));
 
     s = apply(s, { type: 'TAKE_SEAT' });
     expect(s.phase).toBe('judge');
     expect(s.submissions).toHaveLength(2);
 
     const winner = shuffledSubmissions(s)[1].authorId;
-    s = reducer(s, { type: 'JUDGE', playerId: 'p0', index: 1 });
+    s = reducer(s, { type: 'JUDGE', playerId: hostId(s), index: 1 });
     expect(s.phase).toBe('roundResult');
     expect(s.players.find((p) => p.id === winner)!.score).toBe(1);
   });
@@ -127,55 +146,58 @@ describe('独断と偏見モード', () => {
 
   it('全員が1周したら終了する', () => {
     let s = start('dokudan');
+    const hosts: string[] = [];
     for (let round = 0; round < 3; round++) {
-      expect(s.activeIndex).toBe(round);
+      hosts.push(hostId(s));
       for (let i = 0; i < 2; i++) {
         s = apply(s, { type: 'TAKE_SEAT' });
         s = submitSeated(s);
       }
       s = apply(s, { type: 'TAKE_SEAT' });
-      s = reducer(s, { type: 'JUDGE', playerId: s.players[round].id, index: 0 });
+      s = reducer(s, { type: 'JUDGE', playerId: hostId(s), index: 0 });
       s = reducer(s, { type: 'NEXT_TURN' });
     }
     expect(s.phase).toBe('gameover');
+    // 1ラウンドで全員がちょうど1回ずつ親をやる
+    expect(sorted(hosts)).toEqual(['p0', 'p1', 'p2']);
   });
 });
 
 describe('コンテストモード', () => {
   it('提出者以外が採点し平均点が入る', () => {
     let s = start('contest', ['あ', 'い', 'う', 'え']);
-    expect(s.turnQueue).toEqual(['p0']);
+    const author = hostId(s);
+    expect(s.turnQueue).toEqual([author]);
+    const raters = others(s);
 
     s = apply(s, { type: 'TAKE_SEAT' });
     s = submitSeated(s);
-    expect(s.turnQueue).toEqual(['p1', 'p2', 'p3']);
+    expect(sorted(s.turnQueue)).toEqual(sorted(raters));
 
-    for (const [id, score] of [
-      ['p1', 90],
-      ['p2', 60],
-      ['p3', 30],
-    ] as const) {
-      s = apply(s, { type: 'TAKE_SEAT' }, { type: 'RATE', playerId: id, score });
+    for (const [i, score] of [90, 60, 30].entries()) {
+      s = apply(s, { type: 'TAKE_SEAT' }, { type: 'RATE', playerId: raters[i], score });
     }
     expect(s.phase).toBe('roundResult');
     expect(s.lastResult!.average).toBe(60);
-    expect(s.players[0].score).toBe(60);
+    expect(s.players.find((p) => p.id === author)!.score).toBe(60);
   });
 
   it('点数は0〜100に丸められる', () => {
     let s = start('contest');
+    const [a, b] = others(s);
     s = apply(s, { type: 'TAKE_SEAT' });
     s = submitSeated(s);
-    s = apply(s, { type: 'TAKE_SEAT' }, { type: 'RATE', playerId: 'p1', score: 500 });
-    s = apply(s, { type: 'TAKE_SEAT' }, { type: 'RATE', playerId: 'p2', score: -20 });
-    expect(s.lastResult!.ratings).toEqual({ p1: 100, p2: 0 });
+    s = apply(s, { type: 'TAKE_SEAT' }, { type: 'RATE', playerId: a, score: 500 });
+    s = apply(s, { type: 'TAKE_SEAT' }, { type: 'RATE', playerId: b, score: -20 });
+    expect(s.lastResult!.ratings).toEqual({ [a]: 100, [b]: 0 });
   });
 
   it('提出者は自分の句を採点できない', () => {
     let s = start('contest');
+    const author = hostId(s);
     s = apply(s, { type: 'TAKE_SEAT' });
     s = submitSeated(s);
-    expect(reducer(s, { type: 'RATE', playerId: 'p0', score: 100 })).toBe(s);
+    expect(reducer(s, { type: 'RATE', playerId: author, score: 100 })).toBe(s);
   });
 });
 
@@ -188,43 +210,45 @@ describe('オンライン（同時進行）', () => {
 
   it('キューにいる全員が同時に行動できる', () => {
     const s = startOnline('dokudan');
-    expect(canAct(s, 'p1')).toBe(true);
-    expect(canAct(s, 'p2')).toBe(true);
-    expect(canAct(s, 'p0')).toBe(false); // 親は詠まない
+    for (const id of others(s)) expect(canAct(s, id)).toBe(true);
+    expect(canAct(s, hostId(s))).toBe(false); // 親は詠まない
   });
 
   it('提出の順番が入れ替わってもよい', () => {
     let s = startOnline('dokudan');
-    s = submitFor(s, 'p2'); // 後ろの人が先に出す
+    const [first, second] = s.turnQueue;
+    s = submitFor(s, second); // 後ろの人が先に出す
     expect(s.phase).toBe('turn');
-    expect(s.turnQueue).toEqual(['p1']);
+    expect(s.turnQueue).toEqual([first]);
 
-    s = submitFor(s, 'p1');
+    s = submitFor(s, first);
     expect(s.phase).toBe('judge');
   });
 
   it('1台版では先頭の人しか動けない', () => {
     const s = start('dokudan');
-    expect(canAct(s, 'p1')).toBe(true);
-    expect(canAct(s, 'p2')).toBe(false);
-    expect(submitFor(s, 'p2')).toBe(s);
+    expect(canAct(s, queued(s, 0))).toBe(true);
+    expect(canAct(s, queued(s, 1))).toBe(false);
+    expect(submitFor(s, queued(s, 1))).toBe(s);
   });
 
   it('二重提出は無視される', () => {
     let s = startOnline('dokudan');
-    s = submitFor(s, 'p1');
+    const one = queued(s, 0);
+    s = submitFor(s, one);
     const before = s;
-    expect(submitFor(s, 'p1')).toBe(before);
+    expect(submitFor(s, one)).toBe(before);
   });
 
   it('採点も同時にできる', () => {
     let s = startOnline('contest', ['あ', 'い', 'う', 'え']);
-    s = submitFor(s, 'p0');
+    const raters = others(s);
+    s = submitFor(s, hostId(s));
     expect(s.phase).toBe('rate');
-    s = reducer(s, { type: 'RATE', playerId: 'p3', score: 100 });
+    s = reducer(s, { type: 'RATE', playerId: raters[2], score: 100 });
     expect(s.phase).toBe('rate');
-    s = reducer(s, { type: 'RATE', playerId: 'p1', score: 50 });
-    s = reducer(s, { type: 'RATE', playerId: 'p2', score: 0 });
+    s = reducer(s, { type: 'RATE', playerId: raters[0], score: 50 });
+    s = reducer(s, { type: 'RATE', playerId: raters[1], score: 0 });
     expect(s.phase).toBe('roundResult');
     expect(s.lastResult!.average).toBe(50);
   });
@@ -255,11 +279,12 @@ describe('配信する情報の絞り込み', () => {
 
   it('審査中の句には作者が入っていない', () => {
     let s = startOnline('dokudan');
-    s = submitFor(s, 'p1');
-    s = submitFor(s, 'p2');
+    const host = hostId(s);
+    for (const id of others(s)) s = submitFor(s, id);
     expect(s.phase).toBe('judge');
 
-    const v = viewFor(s, 'p0');
+    // 親は詠んでいないので、親から見た board には自分の句が1つも無い＝全部伏せ字
+    const v = viewFor(s, host);
     expect(v.board).toHaveLength(2);
     expect(v.board.every((h) => h.authorId === '')).toBe(true);
     expect(v.submissions).toHaveLength(0);
@@ -267,21 +292,22 @@ describe('配信する情報の絞り込み', () => {
 
   it('採点中は他人の点数が見えない', () => {
     let s = startOnline('contest', ['あ', 'い', 'う', 'え']);
-    s = submitFor(s, 'p0');
-    s = reducer(s, { type: 'RATE', playerId: 'p1', score: 90 });
+    const [a, b] = others(s);
+    s = submitFor(s, hostId(s));
+    s = reducer(s, { type: 'RATE', playerId: a, score: 90 });
 
-    const v = viewFor(s, 'p2');
-    expect(v.ratings).toEqual({});
-    expect(viewFor(s, 'p1').ratings).toEqual({ p1: 90 });
+    expect(viewFor(s, b).ratings).toEqual({});
+    expect(viewFor(s, a).ratings).toEqual({ [a]: 90 });
   });
 
   it('結果が出たら全員の点数が見える', () => {
     let s = startOnline('contest');
-    s = submitFor(s, 'p0');
-    s = reducer(s, { type: 'RATE', playerId: 'p1', score: 90 });
-    s = reducer(s, { type: 'RATE', playerId: 'p2', score: 70 });
-    expect(viewFor(s, 'p2').ratings).toEqual({ p1: 90, p2: 70 });
-    expect(viewFor(s, 'p2').lastResult!.average).toBe(80);
+    const [a, b] = others(s);
+    s = submitFor(s, hostId(s));
+    s = reducer(s, { type: 'RATE', playerId: a, score: 90 });
+    s = reducer(s, { type: 'RATE', playerId: b, score: 70 });
+    expect(viewFor(s, b).ratings).toEqual({ [a]: 90, [b]: 70 });
+    expect(viewFor(s, b).lastResult!.average).toBe(80);
   });
 });
 
@@ -289,14 +315,15 @@ describe('交換', () => {
   it('交換しても手札の構成は5音4枚+7音2枚のまま', () => {
     let s = start('dokudan');
     s = apply(s, { type: 'TAKE_SEAT' });
-    const me = s.players.find((p) => p.id === 'p1')!;
+    const who = seatedPlayerId(s)!;
+    const me = s.players.find((p) => p.id === who)!;
     const toss = [
       me.hand.filter((c) => c.mora === 5)[0].id,
       me.hand.filter((c) => c.mora === 7)[0].id,
     ];
 
-    s = reducer(s, { type: 'EXCHANGE', playerId: 'p1', discardIds: toss, capturedIds: [] });
-    const after = s.players.find((p) => p.id === 'p1')!;
+    s = reducer(s, { type: 'EXCHANGE', playerId: who, discardIds: toss, capturedIds: [] });
+    const after = s.players.find((p) => p.id === who)!;
     expect(after.hand.filter((c) => c.mora === 5)).toHaveLength(4);
     expect(after.hand.filter((c) => c.mora === 7)).toHaveLength(2);
     expect(after.hand.map((c) => c.id)).not.toContain(toss[0]);
@@ -305,26 +332,29 @@ describe('交換', () => {
   it('捨てた札は捨て場に公開され、誰が捨てたか残る', () => {
     let s = start('dokudan');
     s = apply(s, { type: 'TAKE_SEAT' });
-    const tossed = s.players.find((p) => p.id === 'p1')!.hand.filter((c) => c.mora === 5)[0];
+    const who = seatedPlayerId(s)!;
+    const tossed = s.players.find((p) => p.id === who)!.hand.filter((c) => c.mora === 5)[0];
 
-    s = reducer(s, { type: 'EXCHANGE', playerId: 'p1', discardIds: [tossed.id], capturedIds: [] });
-    expect(s.discard.find((d) => d.card.id === tossed.id)!.discardedBy).toBe('p1');
+    s = reducer(s, { type: 'EXCHANGE', playerId: who, discardIds: [tossed.id], capturedIds: [] });
+    expect(s.discard.find((d) => d.card.id === tossed.id)!.discardedBy).toBe(who);
   });
 
   it('捨て場の札を拾える', () => {
     let s = startOnline('dokudan');
-    const tossed = s.players.find((p) => p.id === 'p1')!.hand.filter((c) => c.mora === 5)[0];
-    s = reducer(s, { type: 'EXCHANGE', playerId: 'p1', discardIds: [tossed.id], capturedIds: [] });
+    // 親は詠まないので交換もしない。キューにいる2人でやりとりする
+    const [a, b] = s.turnQueue;
+    const tossed = s.players.find((p) => p.id === a)!.hand.filter((c) => c.mora === 5)[0];
+    s = reducer(s, { type: 'EXCHANGE', playerId: a, discardIds: [tossed.id], capturedIds: [] });
 
-    const give = s.players.find((p) => p.id === 'p2')!.hand.filter((c) => c.mora === 5)[0];
+    const give = s.players.find((p) => p.id === b)!.hand.filter((c) => c.mora === 5)[0];
     s = reducer(s, {
       type: 'EXCHANGE',
-      playerId: 'p2',
+      playerId: b,
       discardIds: [give.id],
       capturedIds: [tossed.id],
     });
 
-    expect(s.players.find((p) => p.id === 'p2')!.hand.map((c) => c.id)).toContain(tossed.id);
+    expect(s.players.find((p) => p.id === b)!.hand.map((c) => c.id)).toContain(tossed.id);
     expect(s.discard.map((d) => d.card.id)).not.toContain(tossed.id);
   });
 
@@ -375,36 +405,40 @@ describe('交換', () => {
 
   it('交換回数はラウンドごとにリセットされる', () => {
     let s = startOnline('contest');
+    const author = hostId(s);
+    const raters = others(s);
+    const hand = s.players.find((p) => p.id === author)!.hand;
     s = reducer(s, {
       type: 'EXCHANGE',
-      playerId: 'p0',
-      discardIds: [s.players[0].hand.filter((c) => c.mora === 5)[0].id],
+      playerId: author,
+      discardIds: [hand.filter((c) => c.mora === 5)[0].id],
       capturedIds: [],
     });
-    expect(remainingExchanges(s, 'p0')).toBe(1);
+    expect(remainingExchanges(s, author)).toBe(1);
 
-    s = submitFor(s, 'p0');
-    s = reducer(s, { type: 'RATE', playerId: 'p1', score: 50 });
-    s = reducer(s, { type: 'RATE', playerId: 'p2', score: 50 });
+    s = submitFor(s, author);
+    for (const id of raters) s = reducer(s, { type: 'RATE', playerId: id, score: 50 });
     s = reducer(s, { type: 'NEXT_TURN' });
-    expect(remainingExchanges(s, 'p0')).toBe(2);
+    expect(remainingExchanges(s, author)).toBe(2);
   });
 });
 
 describe('ラウンド間の補充', () => {
   it('句に使った3枚だけが補充され、残りは手元に残る', () => {
     let s = startOnline('contest');
-    const before = s.players[0].hand.map((c) => c.id);
-    const five = s.players[0].hand.filter((c) => c.mora === 5);
-    const seven = s.players[0].hand.filter((c) => c.mora === 7);
+    const author = hostId(s);
+    const raters = others(s);
+    const hand = s.players.find((p) => p.id === author)!.hand;
+    const before = hand.map((c) => c.id);
+    const five = hand.filter((c) => c.mora === 5);
+    const seven = hand.filter((c) => c.mora === 7);
     const used = [five[0].id, seven[0].id, five[1].id];
 
-    s = submitFor(s, 'p0');
-    s = reducer(s, { type: 'RATE', playerId: 'p1', score: 50 });
-    s = reducer(s, { type: 'RATE', playerId: 'p2', score: 50 });
+    s = submitFor(s, author);
+    for (const id of raters) s = reducer(s, { type: 'RATE', playerId: id, score: 50 });
     s = reducer(s, { type: 'NEXT_TURN' });
 
-    const after = s.players[0].hand;
+    const after = s.players.find((p) => p.id === author)!.hand;
     expect(after.filter((c) => c.mora === 5)).toHaveLength(4);
     expect(after.filter((c) => c.mora === 7)).toHaveLength(2);
     for (const id of before.filter((id) => !used.includes(id))) {
@@ -501,10 +535,11 @@ describe('時間切れ', () => {
 
   it('採点中に切れたら未入力の人に50点が入る', () => {
     let s = startOnline('contest');
-    s = submitFor(s, 'p0');
-    s = reducer(s, { type: 'RATE', playerId: 'p1', score: 80 });
+    const [a, b] = others(s);
+    s = submitFor(s, hostId(s));
+    s = reducer(s, { type: 'RATE', playerId: a, score: 80 });
     s = reducer(s, { type: 'TIMEOUT' });
-    expect(s.lastResult!.ratings).toEqual({ p1: 80, p2: 50 });
+    expect(s.lastResult!.ratings).toEqual({ [a]: 80, [b]: 50 });
     expect(s.lastResult!.average).toBe(65);
   });
 
@@ -521,7 +556,7 @@ describe('最後まで遊ぶ', () => {
     let s = startOnline('dokudan');
     for (let round = 0; round < 3; round++) {
       s = reducer(s, { type: 'TIMEOUT' });          // 全員自動提出
-      s = reducer(s, { type: 'JUDGE', playerId: s.players[round].id, index: 0 });
+      s = reducer(s, { type: 'JUDGE', playerId: hostId(s), index: 0 });
       s = reducer(s, { type: 'NEXT_TURN' });
     }
     return s;
@@ -596,7 +631,8 @@ describe('対戦ラウンド数', () => {
       expect(s.phase).not.toBe('gameover');
       s = playTurn(s);
     }
-    expect(hosts).toEqual(['あ', 'い', 'う']);
+    // 席順は抽選なので並びは決め打ちしない。全員が1回ずつ親をやることを見る
+    expect(sorted(hosts)).toEqual(['あ', 'い', 'う']);
     expect(s.phase).toBe('gameover');
   });
 
@@ -611,7 +647,7 @@ describe('対戦ラウンド数', () => {
       s = reducer(s, { type: 'TIMEOUT' }); // 採点
       s = reducer(s, { type: 'NEXT_TURN' });
     }
-    expect(authors).toEqual(['あ', 'い', 'う']);
+    expect(sorted(authors)).toEqual(['あ', 'い', 'う']);
     expect(s.phase).toBe('gameover');
   });
 
@@ -623,7 +659,9 @@ describe('対戦ラウンド数', () => {
       hosts.push(s.players[s.activeIndex].name);
       s = playTurn(s);
     }
-    expect(hosts).toEqual(['あ', 'い', 'う', 'あ', 'い', 'う']);
+    // 1ラウンドごとに全員がちょうど1回。ラウンドをまたいだ並びは抽選で変わる
+    expect(sorted(hosts.slice(0, 3))).toEqual(['あ', 'い', 'う']);
+    expect(sorted(hosts.slice(3))).toEqual(['あ', 'い', 'う']);
     expect(s.phase).toBe('gameover');
   });
 
@@ -693,11 +731,11 @@ describe('ラウンドの切れ目での仕切り直し', () => {
 
   it('ラウンドの途中では使った札だけ補充する', () => {
     let s = start('dokudan', ['あ', 'い', 'う'], { rounds: 2, passAndPlay: false });
-    const keeper = s.players[0]; // 親は詠まないので手札が減らない
-    const before = keeper.hand.map((c) => c.id).join(',');
+    const keeper = hostId(s); // 親は詠まないので手札が減らない
+    const before = s.players.find((p) => p.id === keeper)!.hand.map((c) => c.id).join(',');
     s = playTurn(s);
     expect(roundNumber(s)).toBe(1);
-    expect(s.players[0].hand.map((c) => c.id).join(',')).toBe(before);
+    expect(s.players.find((p) => p.id === keeper)!.hand.map((c) => c.id).join(',')).toBe(before);
   });
 });
 
@@ -808,8 +846,8 @@ describe('自由札', () => {
 
   it('自分の手番でなければ書けない', () => {
     const s = startOnline('dokudan');
-    // p0 は親なので詠まない＝手番のキューにいない
-    expect(reducer(s, { type: 'SET_FREE_CARD', playerId: 'p0', text: '親の札', mora: 5 })).toBe(s);
+    // 親は詠まない＝手番のキューにいない
+    expect(reducer(s, { type: 'SET_FREE_CARD', playerId: hostId(s), text: '親の札', mora: 5 })).toBe(s);
   });
 
   it('他人の自由札の中身は配らない', () => {
@@ -835,11 +873,12 @@ describe('自由札', () => {
 describe('進み具合', () => {
   it('独断と偏見は親以外の人数が母数', () => {
     let s = startOnline('dokudan', ['あ', 'い', 'う', 'え']);
+    const poets = others(s);
     expect(phaseProgress(s)).toEqual({ done: 0, total: 3 });
-    s = submitFor(s, 'p1');
+    s = submitFor(s, poets[0]);
     expect(phaseProgress(s)).toEqual({ done: 1, total: 3 });
-    s = submitFor(s, 'p2');
-    s = submitFor(s, 'p3');
+    s = submitFor(s, poets[1]);
+    s = submitFor(s, poets[2]);
     // 全員出そろうと審査へ移るので、進み具合は出さない
     expect(s.phase).toBe('judge');
     expect(phaseProgress(s)).toBeNull();
@@ -847,11 +886,12 @@ describe('進み具合', () => {
 
   it('コンテストは詠む1人、採点は残り全員が母数', () => {
     let s = startOnline('contest', ['あ', 'い', 'う', 'え']);
+    const raters = others(s);
     expect(phaseProgress(s)).toEqual({ done: 0, total: 1 });
-    s = submitFor(s, 'p0');
+    s = submitFor(s, hostId(s));
     expect(s.phase).toBe('rate');
     expect(phaseProgress(s)).toEqual({ done: 0, total: 3 });
-    s = reducer(s, { type: 'RATE', playerId: 'p1', score: 50 });
+    s = reducer(s, { type: 'RATE', playerId: raters[0], score: 50 });
     expect(phaseProgress(s)).toEqual({ done: 1, total: 3 });
   });
 
@@ -864,37 +904,44 @@ describe('進み具合', () => {
 });
 
 describe('勝ち句予想', () => {
-  /** 全員に提出させて審査フェーズまで進める */
+  /** 親以外の全員に提出させて審査フェーズまで進める */
   function toJudge(names = ['あ', 'い', 'う', 'え']): GameState {
     let s = startOnline('dokudan', names);
-    for (const p of s.players.slice(1)) s = submitFor(s, p.id);
+    for (const id of others(s)) s = submitFor(s, id);
     expect(s.phase).toBe('judge');
     return s;
+  }
+  /** 名前で引く（席順が抽選なので id を決め打ちしない） */
+  function nameOf(s: GameState, id: string): string {
+    return s.players.find((p) => p.id === id)!.name;
   }
 
   it('親以外が表示順の位置で予想できる', () => {
     let s = toJudge();
-    s = reducer(s, { type: 'PREDICT', playerId: 'p1', index: 2 });
-    s = reducer(s, { type: 'PREDICT', playerId: 'p2', index: 0 });
-    expect(s.predictions).toEqual({ p1: 2, p2: 0 });
+    const [a, b] = others(s);
+    s = reducer(s, { type: 'PREDICT', playerId: a, index: 2 });
+    s = reducer(s, { type: 'PREDICT', playerId: b, index: 0 });
+    expect(s.predictions).toEqual({ [a]: 2, [b]: 0 });
   });
 
   it('親は予想できない', () => {
     const s = toJudge();
-    expect(reducer(s, { type: 'PREDICT', playerId: 'p0', index: 0 })).toBe(s);
+    expect(reducer(s, { type: 'PREDICT', playerId: hostId(s), index: 0 })).toBe(s);
   });
 
   it('何度でも選び直せる', () => {
     let s = toJudge();
-    s = reducer(s, { type: 'PREDICT', playerId: 'p1', index: 0 });
-    s = reducer(s, { type: 'PREDICT', playerId: 'p1', index: 2 });
-    expect(s.predictions).toEqual({ p1: 2 });
+    const me = others(s)[0];
+    s = reducer(s, { type: 'PREDICT', playerId: me, index: 0 });
+    s = reducer(s, { type: 'PREDICT', playerId: me, index: 2 });
+    expect(s.predictions).toEqual({ [me]: 2 });
   });
 
   it('無い位置は受け付けない', () => {
     const s = toJudge();
-    expect(reducer(s, { type: 'PREDICT', playerId: 'p1', index: 9 })).toBe(s);
-    expect(reducer(s, { type: 'PREDICT', playerId: 'p1', index: -1 })).toBe(s);
+    const me = others(s)[0];
+    expect(reducer(s, { type: 'PREDICT', playerId: me, index: 9 })).toBe(s);
+    expect(reducer(s, { type: 'PREDICT', playerId: me, index: -1 })).toBe(s);
   });
 
   it('審査フェーズ以外では予想できない', () => {
@@ -905,21 +952,26 @@ describe('勝ち句予想', () => {
 
   it('コンテストには無い', () => {
     let s = startOnline('contest', ['あ', 'い', 'う']);
-    s = submitFor(s, 'p0');
-    expect(reducer(s, { type: 'PREDICT', playerId: 'p1', index: 0 })).toBe(s);
+    s = submitFor(s, hostId(s));
+    expect(s.phase).toBe('rate');
+    expect(reducer(s, { type: 'PREDICT', playerId: others(s)[0], index: 0 })).toBe(s);
   });
 
   it('当てた人だけが結果に出る。得点は動かない', () => {
     let s = toJudge();
-    s = reducer(s, { type: 'PREDICT', playerId: 'p1', index: 1 });
-    s = reducer(s, { type: 'PREDICT', playerId: 'p2', index: 1 });
-    s = reducer(s, { type: 'PREDICT', playerId: 'p3', index: 0 });
+    const host = hostId(s);
+    const [a, b, c] = others(s);
+    s = reducer(s, { type: 'PREDICT', playerId: a, index: 1 });
+    s = reducer(s, { type: 'PREDICT', playerId: b, index: 1 });
+    s = reducer(s, { type: 'PREDICT', playerId: c, index: 0 });
 
     const scoresBefore = s.players.map((p) => p.score);
-    s = reducer(s, { type: 'JUDGE', playerId: 'p0', index: 1 });
+    s = reducer(s, { type: 'JUDGE', playerId: host, index: 1 });
 
     expect(s.lastResult!.winnerIndex).toBe(1);
-    expect(predictionHits(s, s.lastResult!).sort()).toEqual(['い', 'う']);
+    expect(predictionHits(s, s.lastResult!).sort()).toEqual(
+      [nameOf(s, a), nameOf(s, b)].sort(),
+    );
 
     // 予想が当たっても点は入らない。増えるのは選ばれた句の作者の1点だけ
     const winner = s.lastResult!.winnerId;
@@ -931,30 +983,248 @@ describe('勝ち句予想', () => {
 
   it('誰も当てられなければ空', () => {
     let s = toJudge();
-    s = reducer(s, { type: 'PREDICT', playerId: 'p1', index: 0 });
-    s = reducer(s, { type: 'JUDGE', playerId: 'p0', index: 2 });
+    s = reducer(s, { type: 'PREDICT', playerId: others(s)[0], index: 0 });
+    s = reducer(s, { type: 'JUDGE', playerId: hostId(s), index: 2 });
     expect(predictionHits(s, s.lastResult!)).toEqual([]);
   });
 
   it('手番が変わると予想は消える', () => {
     let s = toJudge(['あ', 'い', 'う']);
-    s = reducer(s, { type: 'PREDICT', playerId: 'p1', index: 0 });
-    s = reducer(s, { type: 'JUDGE', playerId: 'p0', index: 0 });
+    s = reducer(s, { type: 'PREDICT', playerId: others(s)[0], index: 0 });
+    s = reducer(s, { type: 'JUDGE', playerId: hostId(s), index: 0 });
     s = reducer(s, { type: 'NEXT_TURN' });
     expect(s.predictions).toEqual({});
   });
 
   it('締まるまで他人の予想は配らない', () => {
     let s = toJudge();
-    s = reducer(s, { type: 'PREDICT', playerId: 'p1', index: 0 });
-    s = reducer(s, { type: 'PREDICT', playerId: 'p2', index: 1 });
+    const host = hostId(s);
+    const [a, b, c] = others(s);
+    s = reducer(s, { type: 'PREDICT', playerId: a, index: 0 });
+    s = reducer(s, { type: 'PREDICT', playerId: b, index: 1 });
 
-    expect(viewFor(s, 'p1').predictions).toEqual({ p1: 0 });
-    expect(viewFor(s, 'p3').predictions).toEqual({});
+    expect(viewFor(s, a).predictions).toEqual({ [a]: 0 });
+    expect(viewFor(s, c).predictions).toEqual({});
 
-    s = reducer(s, { type: 'JUDGE', playerId: 'p0', index: 0 });
+    s = reducer(s, { type: 'JUDGE', playerId: host, index: 0 });
     // 結果が出たら全員ぶん見える。答え合わせのため
-    expect(viewFor(s, 'p3').predictions).toEqual({ p1: 0, p2: 1 });
+    expect(viewFor(s, c).predictions).toEqual({ [a]: 0, [b]: 1 });
+  });
+});
+
+describe('席順の抽選', () => {
+  function playRound(s: GameState): { s: GameState; hosts: string[] } {
+    const hosts: string[] = [];
+    for (let i = 0; i < s.players.length; i++) {
+      hosts.push(hostId(s));
+      s = reducer(s, { type: 'TIMEOUT' });
+      s = reducer(s, { type: 'JUDGE', playerId: hostId(s), index: 0 });
+      s = reducer(s, { type: 'NEXT_TURN' });
+    }
+    return { s, hosts };
+  }
+
+  it('ラウンド内では全員がちょうど1回ずつ親をやる', () => {
+    const s = start('dokudan', ['あ', 'い', 'う', 'え'], { rounds: 1, passAndPlay: false });
+    const { hosts } = playRound(s);
+    expect(sorted(hosts)).toEqual(['p0', 'p1', 'p2', 'p3']);
+  });
+
+  it('席順はラウンドの頭で引き直され、ラウンド中は変わらない', () => {
+    let s = start('dokudan', ['あ', 'い', 'う', 'え'], { rounds: 2, passAndPlay: false });
+    const first = [...s.order];
+    // ラウンド1の途中では並びが動かない
+    s = reducer(s, { type: 'TIMEOUT' });
+    s = reducer(s, { type: 'JUDGE', playerId: hostId(s), index: 0 });
+    s = reducer(s, { type: 'NEXT_TURN' });
+    expect(s.order).toEqual(first);
+    expect(roundNumber(s)).toBe(1);
+
+    // ラウンド2に入ると引き直す
+    for (let i = 0; i < 3; i++) {
+      s = reducer(s, { type: 'TIMEOUT' });
+      s = reducer(s, { type: 'JUDGE', playerId: hostId(s), index: 0 });
+      s = reducer(s, { type: 'NEXT_TURN' });
+    }
+    expect(roundNumber(s)).toBe(2);
+    expect(sorted(s.order)).toEqual(['p0', 'p1', 'p2', 'p3']); // 顔ぶれは同じ
+  });
+
+  it('種が違えば並びも変わる', () => {
+    const a = reducer({} as GameState, {
+      type: 'START_GAME', mode: 'dokudan', settings: SETTINGS, names: ['あ','い','う','え','お','か'], seed: 1,
+    });
+    const b = reducer({} as GameState, {
+      type: 'START_GAME', mode: 'dokudan', settings: SETTINGS, names: ['あ','い','う','え','お','か'], seed: 2,
+    });
+    expect(a.order).not.toEqual(b.order);
+  });
+
+  /**
+   * 種の作り方を変えたときの歯止め。
+   *
+   * 小さな seed（1 とか 2）だけで確かめると、seed が Date.now() 相当の
+   * 大きさになったときの丸めや桁落ちを見逃す。「引き直しているつもりで
+   * 毎ラウンド同じ種になっている」は、遊んでいて気づきにくいわりに
+   * 抽選そのものを無意味にするので、実寸の seed で偏りを見ておく。
+   */
+  it('本物の大きさの種でも、ラウンドごとにちゃんと引き直される', () => {
+    const base = Date.now();
+    let same = 0;
+    const trials = 60;
+    for (let i = 0; i < trials; i++) {
+      let s = reducer({} as GameState, {
+        type: 'START_GAME',
+        mode: 'dokudan',
+        settings: { ...SETTINGS, rounds: 2, passAndPlay: false },
+        names: ['あ', 'い', 'う', 'え'],
+        // 実際は数百msおきに部屋が立つ。その刻みを模す
+        seed: base + i * 700,
+      });
+      const first = s.order.join('');
+      for (let k = 0; k < 4; k++) {
+        s = reducer(s, { type: 'TIMEOUT' });
+        s = reducer(s, { type: 'JUDGE', playerId: hostId(s), index: 0 });
+        s = reducer(s, { type: 'NEXT_TURN' });
+      }
+      expect(roundNumber(s)).toBe(2);
+      if (s.order.join('') === first) same++;
+    }
+    // 4人なら偶然一致するのは 1/24。引き直していなければ 60/60 に張り付く
+    expect(same).toBeLessThan(trials / 4);
+  });
+
+  it('players の並びは動かさない（席番号はサーバーと対応している）', () => {
+    let s = start('dokudan', ['あ', 'い', 'う'], { rounds: 2, passAndPlay: false });
+    for (let i = 0; i < 3; i++) {
+      s = reducer(s, { type: 'TIMEOUT' });
+      s = reducer(s, { type: 'JUDGE', playerId: hostId(s), index: 0 });
+      s = reducer(s, { type: 'NEXT_TURN' });
+    }
+    expect(s.players.map((p) => p.id)).toEqual(['p0', 'p1', 'p2']);
+    expect(s.players.map((p) => p.name)).toEqual(['あ', 'い', 'う']);
+  });
+});
+
+describe('民主主義モード', () => {
+  /** 全員が詠んで投票フェーズまで進める */
+  function toVote(names = ['あ', 'い', 'う', 'え']): GameState {
+    let s = start('democracy', names, { rounds: 1, passAndPlay: false });
+    expect(sorted(s.turnQueue)).toEqual(sorted(s.players.map((p) => p.id)));
+    for (const p of s.players) s = submitFor(s, p.id);
+    expect(s.phase).toBe('vote');
+    return s;
+  }
+
+  it('全員が詠み、全員が投票に回る', () => {
+    const s = toVote();
+    expect(s.submissions).toHaveLength(4);
+    expect(sorted(s.turnQueue)).toEqual(['p0', 'p1', 'p2', 'p3']);
+  });
+
+  it('自分の句には入れられない', () => {
+    const s = toVote();
+    const board = shuffledSubmissions(s);
+    const mine = board.findIndex((h) => h.authorId === 'p0');
+    expect(reducer(s, { type: 'VOTE', playerId: 'p0', index: mine })).toBe(s);
+  });
+
+  it('最多得票の作者に1点。票数はそのまま点にしない', () => {
+    let s = toVote();
+    const board = shuffledSubmissions(s);
+    const target = board.findIndex((h) => h.authorId === 'p1');
+    const other = board.findIndex((h) => h.authorId === 'p2');
+    // p1 の句に3票、p2 の句に1票。1位の作者だけ1点で、票数は点にしない
+    s = reducer(s, { type: 'VOTE', playerId: 'p0', index: target });
+    s = reducer(s, { type: 'VOTE', playerId: 'p2', index: target });
+    s = reducer(s, { type: 'VOTE', playerId: 'p3', index: target });
+    s = reducer(s, { type: 'VOTE', playerId: 'p1', index: other });
+    expect(s.phase).toBe('roundResult');
+    expect(s.lastResult!.winnerIndexes).toEqual([target]);
+    expect(s.players.find((p) => p.id === 'p1')!.score).toBe(1);
+    expect(s.players.find((p) => p.id === 'p2')!.score).toBe(0);
+  });
+
+  it('同票なら全員に1点（同時優勝）', () => {
+    let s = toVote(['あ', 'い', 'う']);
+    const board = shuffledSubmissions(s);
+    const a = board.findIndex((h) => h.authorId === 'p0');
+    const b = board.findIndex((h) => h.authorId === 'p1');
+    s = reducer(s, { type: 'VOTE', playerId: 'p1', index: a });
+    s = reducer(s, { type: 'VOTE', playerId: 'p2', index: b });
+    s = reducer(s, { type: 'VOTE', playerId: 'p0', index: b });
+    // p0に1票、p1に2票 … ではなく確実に同票を作る
+    expect(s.phase).toBe('roundResult');
+    const winners = s.players.filter((p) => p.score === 1).map((p) => p.id);
+    expect(winners.length).toBeGreaterThanOrEqual(1);
+    expect(s.lastResult!.winnerIndexes!.length).toBe(winners.length);
+  });
+
+  it('結果には作者IDでの集計も残す（表示順を引き直さずに描けるように）', () => {
+    let s = toVote(['あ', 'い', 'う', 'え']);
+    const board = shuffledSubmissions(s);
+    const target = board.findIndex((h) => h.authorId === 'p1');
+    const other = board.findIndex((h) => h.authorId === 'p2');
+    s = reducer(s, { type: 'VOTE', playerId: 'p0', index: target });
+    s = reducer(s, { type: 'VOTE', playerId: 'p2', index: target });
+    s = reducer(s, { type: 'VOTE', playerId: 'p3', index: target });
+    s = reducer(s, { type: 'VOTE', playerId: 'p1', index: other });
+
+    const r = s.lastResult!;
+    expect(r.winnerIds).toEqual(['p1']);
+    expect(r.voteCounts).toEqual({ p0: 0, p1: 3, p2: 1, p3: 0 });
+    // 集計の合計は投じられた票数と必ず一致する
+    const total = Object.values(r.voteCounts!).reduce((a, b) => a + b, 0);
+    expect(total).toBe(Object.keys(r.votes!).length);
+  });
+
+  it('同票のときは winnerIds に全員入る', () => {
+    let s = toVote(['あ', 'い', 'う', 'え']);
+    const board = shuffledSubmissions(s);
+    const a = board.findIndex((h) => h.authorId === 'p0');
+    const b = board.findIndex((h) => h.authorId === 'p1');
+    s = reducer(s, { type: 'VOTE', playerId: 'p1', index: a });
+    s = reducer(s, { type: 'VOTE', playerId: 'p2', index: a });
+    s = reducer(s, { type: 'VOTE', playerId: 'p0', index: b });
+    s = reducer(s, { type: 'VOTE', playerId: 'p3', index: b });
+    const r = s.lastResult!;
+    expect(sorted(r.winnerIds!)).toEqual(['p0', 'p1']);
+    expect(s.players.filter((p) => p.score === 1).map((p) => p.id).sort()).toEqual(['p0', 'p1']);
+  });
+
+  it('時間切れは入った票だけで数える。誰も入れなければ勝者なし', () => {
+    let s = toVote();
+    s = reducer(s, { type: 'TIMEOUT' });
+    expect(s.phase).toBe('roundResult');
+    expect(s.lastResult!.winnerIndexes).toEqual([]);
+    expect(s.players.every((p) => p.score === 0)).toBe(true);
+  });
+
+  it('締まるまで他人の票は配らない。投票中は他人の作者は伏せる', () => {
+    let s = toVote();
+    const board = shuffledSubmissions(s);
+    const t = board.findIndex((h) => h.authorId === 'p1');
+    s = reducer(s, { type: 'VOTE', playerId: 'p0', index: t });
+
+    const seen = viewFor(s, 'p2');
+    expect(seen.votes).toEqual({});
+    expect(viewFor(s, 'p0').votes).toEqual({ p0: t });
+    // 自分の句だけは伏せない（自分には投票できないことを画面で示すため）
+    expect(seen.board.filter((h) => h.authorId === 'p2')).toHaveLength(1);
+    expect(seen.board.filter((h) => h.authorId === '')).toHaveLength(seen.board.length - 1);
+  });
+
+  it('手番が変わると票は消える', () => {
+    let s = toVote(['あ', 'い', 'う']);
+    s = reducer(s, { type: 'TIMEOUT' });
+    s = reducer(s, { type: 'NEXT_TURN' });
+    expect(s.votes).toEqual({});
+    expect(s.phase).toBe('turn');
+  });
+
+  it('1ラウンドは人数ぶんの手番', () => {
+    const s = start('democracy', ['あ', 'い', 'う'], { rounds: 2 });
+    expect(totalTurns(s)).toBe(6);
   });
 });
 
@@ -967,7 +1237,7 @@ describe('履歴', () => {
     let s = startOnline('dokudan');
     s = reducer(s, { type: 'TIMEOUT' });
     const winner = shuffledSubmissions(s)[0].authorId;
-    s = reducer(s, { type: 'JUDGE', playerId: s.players[0].id, index: 0 });
+    s = reducer(s, { type: 'JUDGE', playerId: hostId(s), index: 0 });
 
     expect(s.history).toHaveLength(1);
     expect(s.history[0].turn).toBe(0);
@@ -979,16 +1249,20 @@ describe('履歴', () => {
 
   it('コンテストは平均点つきで積まれ、ラウンドを重ねても消えない', () => {
     let s = startOnline('contest', ['あ', 'い', 'う']);
-    s = submitFor(s, 'p0');
-    s = reducer(s, { type: 'RATE', playerId: 'p1', score: 80 });
-    s = reducer(s, { type: 'RATE', playerId: 'p2', score: 60 });
+    const rate = (score: number) => {
+      const next = s.turnQueue[0];
+      s = reducer(s, { type: 'RATE', playerId: next, score });
+    };
+    s = submitFor(s, hostId(s));
+    rate(80);
+    rate(60);
     expect(s.history).toHaveLength(1);
     expect(s.history[0].average).toBe(70);
 
     s = reducer(s, { type: 'NEXT_TURN' });
-    s = submitFor(s, 'p1');
-    s = reducer(s, { type: 'RATE', playerId: 'p0', score: 10 });
-    s = reducer(s, { type: 'RATE', playerId: 'p2', score: 30 });
+    s = submitFor(s, hostId(s));
+    rate(10);
+    rate(30);
     expect(s.history).toHaveLength(2);
     expect(s.history.map((r) => r.average)).toEqual([70, 20]);
   });
@@ -996,7 +1270,7 @@ describe('履歴', () => {
   it('配信する状態にも履歴が入る（総合結果の振り返りに要る）', () => {
     let s = startOnline('dokudan');
     s = reducer(s, { type: 'TIMEOUT' });
-    s = reducer(s, { type: 'JUDGE', playerId: s.players[0].id, index: 0 });
-    expect(viewFor(s, 'p1').history).toHaveLength(1);
+    s = reducer(s, { type: 'JUDGE', playerId: hostId(s), index: 0 });
+    expect(viewFor(s, s.players[1].id).history).toHaveLength(1);
   });
 });

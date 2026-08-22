@@ -18,6 +18,8 @@ export const EV = {
   configure: 'host:configure',
   /** ホストが開始する */
   start: 'host:start',
+  /** ホストが切れた人を席から外す（ロビーにいる間だけ） */
+  kick: 'host:kick',
   /** ホストが総合結果からロビーへ戻す */
   toLobby: 'host:toLobby',
   /** ゲーム中の行動 */

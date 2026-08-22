@@ -42,7 +42,7 @@ export function Online({ onBack }: { onBack: () => void }) {
         <DeadlineBar
           deadline={deadline}
           total={
-            game.phase === 'judge' || game.phase === 'rate'
+            game.phase === 'judge' || game.phase === 'rate' || game.phase === 'vote'
               ? (game.settings.timeLimits.judge ?? 120)
               : (game.settings.timeLimits.turn ?? 300)
           }
@@ -213,6 +213,13 @@ function LobbyScreen({ room, lobby }: { room: ReturnType<typeof useRoom>; lobby:
                   {p.id === room.me && '（あなた）'}
                 </span>
                 {!p.connected && <span className="badge">切断</span>}
+                {/* 落ちた人が席を占めたままだと次を始められない。追い出しではなく
+                    その手当てなので、繋がっている人とホストには出さない */}
+                {amHost && !p.connected && p.id !== lobby.hostId && (
+                  <button className="ghost tiny" onClick={() => room.kick(p.id)}>
+                    席を空ける
+                  </button>
+                )}
               </div>
             ))}
           </div>

@@ -286,12 +286,15 @@ export function Turn({
           )}
 
           {s.mode === 'dokudan' && <p className="sub center">親（{activePlayer(s).name}）が選びます</p>}
+          {s.mode === 'democracy' && <p className="sub center">全員の投票で決まります</p>}
         </div>
 
         <div className="turn-side hand-tray">
           <div className="label-mark">
             手札
-            <span className="free-note">自由札はラウンドに1枚・交換不可</span>
+            <span className="free-note">
+              自由札は{s.settings.freeCardPerTurn ? '毎ターン1枚' : 'ラウンドに1枚'}・交換不可
+            </span>
           </div>
           {/* 五音・七音・自由札を束で分ける。文字の見出しを足すと1行ぶん高くなって
               作句画面が1画面に収まらなくなるので、区切りは間隔だけで示す */}
@@ -336,7 +339,9 @@ function Waiting({ s, me }: { s: GameState; me: string }) {
       ? { title: 'あなたが親です', note: '句は作りません。出そろったら好きな1句を選んでください。' }
       : s.mode === 'contest' && me !== author.id
         ? { title: 'あなたは審査員です', note: `${author.name} が詠み終わったら0〜100点を付けます。` }
-        : { title: '提出しました', note: null };
+        : s.mode === 'democracy'
+          ? { title: '提出しました', note: '全員そろったら投票に移ります。自分の句には入れられません。' }
+          : { title: '提出しました', note: null };
   const p = phaseProgress(s);
   const allIn = s.turnQueue.length === 0;
 
@@ -361,11 +366,14 @@ function Waiting({ s, me }: { s: GameState; me: string }) {
           <ProgressBar s={s} />
           {/* コンテストは詠むのが1人だけなので、残りは「提出済」ではなく「審査員」。
               同じ待機画面でもモードで意味が違う */}
+          {/* コンテストは詠むのが1人だけなので、残りは「提出済」ではなく「審査員」。
+              民主主義は全員が同じ立場なので、中心にいる人を作らない */}
           <Roster
             s={s}
+            hasLead={s.mode !== 'democracy'}
             leadLabel={s.mode === 'dokudan' ? '親' : '詠み手'}
-            doneLabel={s.mode === 'dokudan' ? '提出済' : '審査員'}
-            pendingLabel={s.mode === 'dokudan' ? '詠んでいる' : '待機'}
+            doneLabel={s.mode === 'contest' ? '審査員' : '提出済'}
+            pendingLabel={s.mode === 'contest' ? '待機' : '詠んでいる'}
           />
           {role.note && <p className="sub">{role.note}</p>}
         </div>
